@@ -1199,6 +1199,7 @@ a:hover {
   gap: var(--space-sm);
 }
 
+
 .pdf-viewer-title {
   font-family: var(--font-ui);
   font-size: 0.9rem;
@@ -1207,6 +1208,206 @@ a:hover {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+}
+
+/* PDF Viewer — toolbar + renderer utility classes (extracted from inline styles) */
+
+/* PDF viewer header: title on left, toolbar pinned right, vertically centered */
+.pdf-viewer-header--with-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Ensures toolbar stays to the right */
+.pdf-viewer-header-toolbar-wrap {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Viewer content padding used by ChantDetailPage */
+.pdf-viewer-content--padded {
+  padding: 0.75rem;
+}
+
+/* Toolbar “card” container (original PdfToolbar wrapper styling) */
+.pdf-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* When the toolbar is inside the header, remove the “card” look */
+.pdf-toolbar--header {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+/* Inner toolbar sections */
+.pdf-toolbar-left,
+.pdf-toolbar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* PDF toolbar controls — match site button/link styling */
+.pdf-toolbar button,
+.pdf-toolbar a {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  user-select: none;
+}
+
+/* PDF toolbar: primary Download button */
+.pdf-toolbar .pdf-toolbar-download {
+  background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(139, 38, 53, 0.25);
+}
+
+.pdf-toolbar .pdf-toolbar-download:hover {
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: 0 8px 25px rgba(139, 38, 53, 0.35);
+}
+
+.pdf-toolbar .pdf-toolbar-download:focus-visible {
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.18), 0 8px 25px rgba(139, 38, 53, 0.35);
+}
+
+.pdf-toolbar .pdf-toolbar-download:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pdf-toolbar a {
+  text-decoration: none;
+}
+
+.pdf-toolbar button:hover,
+.pdf-toolbar a:hover {
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.pdf-toolbar button:active,
+.pdf-toolbar a:active {
+  transform: translateY(0);
+}
+
+.pdf-toolbar button:focus-visible,
+.pdf-toolbar a:focus-visible {
+  outline: none;
+  border-color: var(--burgundy);
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.12);
+}
+
+.pdf-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Make +/- buttons feel like compact controls */
+.pdf-toolbar button[aria-label="Zoom out"],
+.pdf-toolbar button[aria-label="Zoom in"] {
+  width: 40px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* If aria-labels are not present, keep first two buttons compact using order in the right group */
+.pdf-toolbar-right button:first-child,
+.pdf-toolbar-right button:nth-child(3) {
+  width: 40px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Ensure the scale readout looks like text (not a button) */
+.pdf-toolbar-right span {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* On very small widths, allow toolbar controls to wrap nicely */
+@media (max-width: 520px) {
+  .pdf-toolbar {
+    gap: 10px;
+  }
+
+  .pdf-toolbar-left,
+  .pdf-toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .pdf-toolbar-right {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+/* Header toolbar variant should not “lift” on hover */
+.pdf-toolbar--header button:hover,
+.pdf-toolbar--header a:hover {
+  transform: none;
+}
+
+/* Error banner */
+.pdf-error-banner {
+  padding: 12px;
+  border: 1px solid rgba(255, 0, 0, 0.25);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+/* Document container */
+.pdf-doc {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+
+/* Center the page */
+.pdf-doc-page-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
 }
 
 .pdf-viewer-content {
