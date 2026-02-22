@@ -13,19 +13,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-type PdfViewerProps = {
-  file: string | File;
-  initialScale?: number;
-  minScale?: number;
-  maxScale?: number;
-  scale?: number;
-  onScaleChange?: (scale: number) => void;
-  /**
-   * Optional suggested filename for download when `file` is a URL.
-   * For File objects, we use file.name automatically.
-   */
-  downloadName?: string;
-};
 
 function guessFileNameFromUrl(url: string): string {
   try {
@@ -444,7 +431,7 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
   //   return typeof candidate === 'string' ? candidate : '';
   // }, [chant]);
 
-  const pdfSource = '/chants/apolytikion-tone1.pdf';
+  const pdfSource = `${import.meta.env.BASE_URL}chants/apolytikion-tone1.pdf`;
 
   const hasPdf = !!pdfSource;
 
