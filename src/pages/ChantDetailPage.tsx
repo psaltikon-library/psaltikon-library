@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { mockChants, phoneticsChants, compositionsChants } from '../data/mockChants';
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
+
+import 'react-pdf/dist/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 // IMPORTANT: configure the PDF.js worker for Vite
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -109,30 +112,35 @@ function PdfToolbar({
   variant?: 'card' | 'header';
 }) {
   const isHeader = variant === 'header';
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
   return (
     <div className={isHeader ? 'pdf-toolbar pdf-toolbar--header' : 'pdf-toolbar'}>
       <div className="pdf-toolbar-left">
-        <button onClick={onPrev} disabled={!canPrev}>
+        <button type="button" onClick={stop(onPrev)} disabled={!canPrev}>
           Prev
         </button>
         <span>
           Page <b>{page}</b> / <b>{numPages || '—'}</b>
         </span>
-        <button onClick={onNext} disabled={!canNext}>
+        <button type="button" onClick={stop(onNext)} disabled={!canNext}>
           Next
         </button>
       </div>
       <div className="pdf-toolbar-right">
-        <button onClick={onZoomOut} disabled={scale <= minScale}>
+        <button type="button" onClick={stop(onZoomOut)} disabled={scale <= minScale}>
           –
         </button>
         <span style={{ minWidth: 70, textAlign: 'center' }}>
           <b>{Math.round(scale * 100)}%</b>
         </span>
-        <button onClick={onZoomIn} disabled={scale >= maxScale}>
+        <button type="button" onClick={stop(onZoomIn)} disabled={scale >= maxScale}>
           +
         </button>
-        <button className="pdf-toolbar-download" onClick={onDownload} disabled={downloading}>
+        <button type="button" className="pdf-toolbar-download" onClick={stop(onDownload)} disabled={downloading}>
           {downloading ? 'Downloading…' : 'Download'}
         </button>
         {openUrl ? (
@@ -154,121 +162,178 @@ function PdfErrorBanner({ error }: { error: string | null }) {
   );
 }
 
-function PdfDocumentRenderer({
-  file,
-  fileKey,
-  page,
-  scale,
-  onLoaded,
-  onError,
-}: {
-  file: string | File;
-  fileKey: string;
-  page: number;
-  scale: number;
-  onLoaded: (numPages: number) => void;
-  onError: (message: string) => void;
-}) {
+type PdfDocumentRendererHandle = {
+  scrollToPage: (page: number) => void;
+};
+
+const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
+  {
+    file,
+    fileKey,
+    page,
+    scale,
+    onLoaded,
+    onError,
+    onVisiblePageChange,
+  }: {
+    file: string | File;
+    fileKey: string;
+    page: number;
+    scale: number;
+    onLoaded: (numPages: number) => void;
+    onError: (message: string) => void;
+    onVisiblePageChange: (page: number) => void;
+  },
+  ref: React.ForwardedRef<PdfDocumentRendererHandle>
+) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const [wrapWidth, setWrapWidth] = useState<number>(0);
+  const [numPages, setNumPages] = useState<number>(0);
+
+  const pageWrapRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useEffect(() => {
+    if (!wrapRef.current) return;
+
+    const el = wrapRef.current;
+
+    const setNow = () => {
+      const w = Math.floor(el.getBoundingClientRect().width);
+      if (w > 0) setWrapWidth(w);
+    };
+
+    // IMPORTANT: set initial width immediately
+    setNow();
+
+    const ro = new ResizeObserver(() => setNow());
+    ro.observe(el);
+
+    window.addEventListener('resize', setNow);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', setNow);
+    };
+  }, []);
+
+  // account for the 12px left/right padding in .pdf-doc-page-wrap
+  const availableWidth = Math.max(0, wrapWidth - 24);
+  // Always provide a concrete width so react-pdf updates reliably.
+  const baseWidth = availableWidth > 0 ? availableWidth : 900;
+  const pageWidth = Math.floor(baseWidth * scale);
+
+  function internalScrollToPage(target: number) {
+    const t = Math.max(1, Math.min(numPages || 1, target));
+    const el = pageWrapRefs.current[t - 1];
+    const root = scrollRef.current;
+    if (!el) return;
+
+    // Scroll only inside the PDF container (root), not the whole window.
+    if (root) {
+      const rootRect = root.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const top = elRect.top - rootRect.top + root.scrollTop;
+
+      root.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+      return;
+    }
+
+    // If there is no scroll root, do nothing (avoid scrolling the whole page)
+    return;
+  }
+
+  useImperativeHandle(ref, () => ({
+    scrollToPage: internalScrollToPage,
+  }));
+
+  // Track the most visible page while scrolling
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    if (!numPages) return;
+
+    const els = pageWrapRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (!els.length) return;
+
+    let raf = 0;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0))[0];
+
+        if (!visible?.target) return;
+
+        const p = Number((visible.target as HTMLElement).dataset.pageNumber || 1);
+
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => onVisiblePageChange(p));
+      },
+      { root, threshold: [0.25, 0.5, 0.75] }
+    );
+
+    els.forEach((el) => io.observe(el));
+
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+  }, [numPages, onVisiblePageChange]);
+
+  // When page changes via toolbar, scroll to it
+  useEffect(() => {
+    if (!numPages) return;
+    internalScrollToPage(page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, numPages]);
+
   return (
-    <div className="pdf-doc">
+    <div className="pdf-doc" ref={scrollRef}>
       <Document
         key={fileKey}
         file={file}
-        onLoadSuccess={({ numPages }) => onLoaded(numPages)}
+        onLoadSuccess={({ numPages: loaded }) => {
+          setNumPages(loaded);
+          onLoaded(loaded);
+        }}
         onLoadError={(e) => onError((e as any)?.message ?? 'Failed to load PDF')}
         loading={<div style={{ padding: 16 }}>Loading PDF…</div>}
         error={<div style={{ padding: 16 }}>Could not display PDF.</div>}
         noData={<div style={{ padding: 16 }}>No PDF selected.</div>}
       >
-        <div className="pdf-doc-page-wrap">
-          <Page
-            pageNumber={page}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            loading={<div style={{ padding: 16 }}>Rendering page…</div>}
-          />
+        <div className="pdf-doc-page-wrap" ref={wrapRef}>
+          <div className="pdf-doc-scroll">
+            {Array.from({ length: numPages || 0 }, (_, i) => {
+              const p = i + 1;
+              return (
+                <div
+                  key={`${p}-${pageWidth}`}
+                  className="pdf-doc-page"
+                  data-page-number={p}
+                  ref={(el) => {
+                    pageWrapRefs.current[i] = el;
+                  }}
+                >
+                  <Page
+                    key={`${p}-${pageWidth}`}
+                    pageNumber={p}
+                    width={pageWidth}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                    loading={<div style={{ padding: 16 }}>Rendering page…</div>}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Document>
     </div>
   );
-}
-
-function PdfViewer({
-  file,
-  initialScale = 1.0,
-  minScale = 0.5,
-  maxScale = 2.5,
-  downloadName,
-}: PdfViewerProps) {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [page, setPage] = useState<number>(1);
-  const [scale, setScale] = useState<number>(initialScale);
-  const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
-
-  const canPrev = page > 1;
-  const canNext = numPages > 0 && page < numPages;
-
-  const fileKey = useMemo(() => {
-    if (typeof file === 'string') return file;
-    return `${file.name}-${file.size}-${file.lastModified}`;
-  }, [file]);
-
-  async function handleDownload() {
-    try {
-      setDownloading(true);
-      setError(null);
-      await downloadPdf(file, downloadName);
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to download PDF');
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  function handleLoaded(loadedPages: number) {
-    setNumPages(loadedPages);
-    setPage(1);
-    setError(null);
-  }
-
-  function handleDocError(message: string) {
-    setError(message);
-  }
-
-  return (
-    <div style={{ width: '100%', maxWidth: 1000, margin: '0 auto' }}>
-      <PdfToolbar
-        page={page}
-        numPages={numPages}
-        canPrev={canPrev}
-        canNext={canNext}
-        scale={scale}
-        minScale={minScale}
-        maxScale={maxScale}
-        downloading={downloading}
-        onPrev={() => setPage((p) => Math.max(1, p - 1))}
-        onNext={() => setPage((p) => Math.min(numPages, p + 1))}
-        onZoomOut={() => setScale((s) => Math.max(minScale, +(s - 0.1).toFixed(2)))}
-        onZoomIn={() => setScale((s) => Math.min(maxScale, +(s + 0.1).toFixed(2)))}
-        onDownload={handleDownload}
-        openUrl={typeof file === 'string' ? file : undefined}
-      />
-
-      <PdfErrorBanner error={error} />
-
-      <PdfDocumentRenderer
-        file={file}
-        fileKey={fileKey}
-        page={page}
-        scale={scale}
-        onLoaded={handleLoaded}
-        onError={handleDocError}
-      />
-    </div>
-  );
-}
+});
 
 interface ChantDetailPageProps {
   chantId: string | null;
@@ -313,71 +378,73 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
   const chantTitle = chant.title;
 
   // Resolve a PDF path/url from the chant object (robust across data shapes)
-  const pdfSource = useMemo(() => {
-    const anyChant = chant as any;
-    if (!anyChant) return '';
+  // const pdfSource = useMemo(() => {
+  //   const anyChant = chant as any;
+  //   if (!anyChant) return '';
 
-    const direct =
-      anyChant.pdfUrl ||
-      anyChant.pdfURL ||
-      anyChant.pdfPath ||
-      anyChant.pdf ||
-      anyChant.pdfFile ||
-      anyChant.pdf_file ||
-      anyChant.fileUrl ||
-      anyChant.fileURL ||
-      anyChant.filePath ||
-      anyChant.scorePdf ||
-      anyChant.scorePDF ||
-      anyChant.sheetPdf ||
-      anyChant.sheetPDF ||
-      anyChant.musicPdf ||
-      anyChant.musicPDF;
+  //   const direct =
+  //     anyChant.pdfUrl ||
+  //     anyChant.pdfURL ||
+  //     anyChant.pdfPath ||
+  //     anyChant.pdf ||
+  //     anyChant.pdfFile ||
+  //     anyChant.pdf_file ||
+  //     anyChant.fileUrl ||
+  //     anyChant.fileURL ||
+  //     anyChant.filePath ||
+  //     anyChant.scorePdf ||
+  //     anyChant.scorePDF ||
+  //     anyChant.sheetPdf ||
+  //     anyChant.sheetPDF ||
+  //     anyChant.musicPdf ||
+  //     anyChant.musicPDF;
 
-    const nested =
-      anyChant.assets?.pdf ||
-      anyChant.assets?.pdfUrl ||
-      anyChant.assets?.pdfURL ||
-      anyChant.files?.pdf ||
-      anyChant.files?.pdfUrl ||
-      anyChant.files?.pdfURL ||
-      anyChant.document?.pdf ||
-      anyChant.document?.pdfUrl ||
-      anyChant.document?.pdfURL ||
-      anyChant.file?.pdf ||
-      anyChant.file?.url ||
-      anyChant.file?.path;
+  //   const nested =
+  //     anyChant.assets?.pdf ||
+  //     anyChant.assets?.pdfUrl ||
+  //     anyChant.assets?.pdfURL ||
+  //     anyChant.files?.pdf ||
+  //     anyChant.files?.pdfUrl ||
+  //     anyChant.files?.pdfURL ||
+  //     anyChant.document?.pdf ||
+  //     anyChant.document?.pdfUrl ||
+  //     anyChant.document?.pdfURL ||
+  //     anyChant.file?.pdf ||
+  //     anyChant.file?.url ||
+  //     anyChant.file?.path;
 
-    const fromArray = Array.isArray(anyChant.files)
-      ? (anyChant.files.find((f: any) => {
-          const url = f?.url || f?.path || f?.href;
-          const name = f?.name || f?.filename;
-          return (
-            (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-            (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-          );
-        })?.url ||
-          anyChant.files.find((f: any) => {
-            const url = f?.url || f?.path || f?.href;
-            const name = f?.name || f?.filename;
-            return (
-              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-            );
-          })?.path ||
-          anyChant.files.find((f: any) => {
-            const url = f?.url || f?.path || f?.href;
-            const name = f?.name || f?.filename;
-            return (
-              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-            );
-          })?.href)
-      : undefined;
+  //   const fromArray = Array.isArray(anyChant.files)
+  //     ? (anyChant.files.find((f: any) => {
+  //         const url = f?.url || f?.path || f?.href;
+  //         const name = f?.name || f?.filename;
+  //         return (
+  //           (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+  //           (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+  //         );
+  //       })?.url ||
+  //         anyChant.files.find((f: any) => {
+  //           const url = f?.url || f?.path || f?.href;
+  //           const name = f?.name || f?.filename;
+  //           return (
+  //             (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+  //             (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+  //           );
+  //         })?.path ||
+  //         anyChant.files.find((f: any) => {
+  //           const url = f?.url || f?.path || f?.href;
+  //           const name = f?.name || f?.filename;
+  //           return (
+  //             (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+  //             (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+  //           );
+  //         })?.href)
+  //     : undefined;
 
-    const candidate = direct || nested || fromArray || '';
-    return typeof candidate === 'string' ? candidate : '';
-  }, [chant]);
+  //   const candidate = direct || nested || fromArray || '';
+  //   return typeof candidate === 'string' ? candidate : '';
+  // }, [chant]);
+
+  const pdfSource = '/chants/apolytikion-tone1.pdf';
 
   const hasPdf = !!pdfSource;
 
@@ -391,6 +458,22 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
   const pdfFileKey = useMemo(() => {
     return pdfSource || 'no-pdf';
   }, [pdfSource]);
+
+  const pdfRendererRef = useRef<PdfDocumentRendererHandle | null>(null);
+  const pdfNavLockRef = useRef(false);
+
+  function goToPdfPage(target: number) {
+    const t = Math.max(1, Math.min(pdfNumPages || 1, target));
+    pdfNavLockRef.current = true;
+    setPdfPage(t);
+    pdfRendererRef.current?.scrollToPage(t);
+
+    // release the lock shortly after the programmatic scroll begins
+    window.setTimeout(() => {
+      pdfNavLockRef.current = false;
+    }, 350);
+  }
+
 
   const pdfCanPrev = pdfPage > 1;
   const pdfCanNext = pdfNumPages > 0 && pdfPage < pdfNumPages;
@@ -596,8 +679,8 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
                 minScale={0.5}
                 maxScale={2.5}
                 downloading={pdfDownloading}
-                onPrev={() => setPdfPage((p) => Math.max(1, p - 1))}
-                onNext={() => setPdfPage((p) => Math.min(pdfNumPages, p + 1))}
+                onPrev={() => goToPdfPage(pdfPage - 1)}
+                onNext={() => goToPdfPage(pdfPage + 1)}
                 onZoomOut={() => setPdfScale((s) => Math.max(0.5, +(s - 0.1).toFixed(2)))}
                 onZoomIn={() => setPdfScale((s) => Math.min(2.5, +(s + 0.1).toFixed(2)))}
                 onDownload={handlePdfToolbarDownload}
@@ -614,12 +697,17 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
             <>
               <PdfErrorBanner error={pdfError} />
               <PdfDocumentRenderer
+                ref={pdfRendererRef}
                 file={pdfSource}
                 fileKey={pdfFileKey}
                 page={pdfPage}
                 scale={pdfScale}
                 onLoaded={handlePdfLoaded}
                 onError={handlePdfDocError}
+                onVisiblePageChange={(p) => {
+                  if (pdfNavLockRef.current) return;
+                  setPdfPage(p);
+                }}
               />
             </>
           ) : (

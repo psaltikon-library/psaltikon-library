@@ -1184,7 +1184,7 @@ a:hover {
   background: var(--bg-surface);
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
-  overflow: hidden;
+  overflow: visible;
   box-shadow: var(--shadow-xl);
 }
 
@@ -1219,6 +1219,8 @@ a:hover {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 10;
 }
 
 /* Ensures toolbar stays to the right */
@@ -1379,6 +1381,45 @@ a:hover {
     justify-content: flex-end;
     flex-wrap: wrap;
   }
+
+  /* On small screens, stack title + toolbar and let controls wrap cleanly */
+  .pdf-viewer-header--with-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pdf-viewer-header-toolbar-wrap {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* Header toolbar should wrap like a normal toolbar on mobile */
+  .pdf-toolbar--header {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .pdf-toolbar--header .pdf-toolbar-left,
+  .pdf-toolbar--header .pdf-toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  /* Make buttons slightly more compact on mobile */
+  .pdf-toolbar button,
+  .pdf-toolbar a {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Keep +/- compact even after padding change */
+  .pdf-toolbar-right button:first-child,
+  .pdf-toolbar-right button:nth-child(3) {
+    width: 38px;
+  }
 }
 
 /* Header toolbar variant should not “lift” on hover */
@@ -1399,25 +1440,47 @@ a:hover {
 .pdf-doc {
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 12px;
-  overflow: hidden;
-  background: white;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 75vh;
+  background: gray;
+  width:100%;
+  flex:1 1 auto;
+}
+
+.pdf-doc-scroll {
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pdf-doc-page {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 /* Center the page */
 .pdf-doc-page-wrap {
-  display: flex;
-  justify-content: center;
+  width:100%;
   padding: 12px;
 }
 
+/* Let react-pdf respect the explicit Page width for zooming; keep aspect ratio */
+.pdf-doc .react-pdf__Page__canvas {
+  height: auto !important;
+}
+
+
 .pdf-viewer-content {
-  min-height: 500px;
-  height: 60vh;
   max-height: 700px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+  position: relative;
+  z-index: 1;
 }
 
 .pdf-placeholder {
@@ -1926,3 +1989,14 @@ a:hover {
 .gap-sm { gap: var(--space-sm); }
 .gap-md { gap: var(--space-md); }
 .gap-lg { gap: var(--space-lg); }
+
+
+@media (max-width: 768px) {
+  .pdf-viewer-header--with-toolbar {
+    gap: 0.5rem;
+  }
+
+  .pdf-toolbar--header {
+    flex-wrap: wrap;
+  }
+}
