@@ -418,6 +418,9 @@ a:hover {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xl);
   border: 1px solid var(--border-light);
+  max-height: calc(100vh - 120px); /* keeps menu within screen */
+  overflow-y: auto;                /* allows scrolling if needed */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Mobile Nav Links */
@@ -605,31 +608,41 @@ a:hover {
 
 /* Mobile auth section */
 .mobile-auth {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  margin-top: auto; /* pushes it to the bottom of the menu */
+  padding: var(--space-md) var(--space-xl);
+  border-top: 1px solid var(--border-light);
 }
 
 .mobile-auth-btn {
   width: 100%;
-  border-radius: 14px;
+  border-radius: var(--radius-full);
   padding: 12px 14px;
+  font-family: var(--font-ui);
   font-size: 0.95rem;
   cursor: pointer;
 }
 
 .mobile-auth-btn--ghost {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border-light);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
 }
 
-.mobile-auth-btn--solid {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #ffffff;
-  color: #111016;
-  font-weight: 600;
+.mobile-auth-btn--ghost:hover {
+  border-color: var(--burgundy);
+  color: var(--burgundy);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 900px) {
+  .nav {
+    display: none;
+  }
+
+  .menu-button {
+    display: flex;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
