@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Page } from '../types';
+import AuthModal from './AuthModal';
 
 interface HeaderProps {
   currentPage: Page;
@@ -10,6 +11,8 @@ interface HeaderProps {
 
 const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const navItems: { page: Page; label: string }[] = [
     { page: 'home', label: 'Home' },
@@ -24,23 +27,29 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
     setMobileMenuOpen(false);
   };
 
+  const openAuth = (mode: 'login' | 'signup') => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+    setMobileMenuOpen(false);
+  };
+
   return (
     <>
-      <motion.header 
+      <motion.header
         className={`header ${isScrolled ? 'scrolled' : ''}`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
       >
         <div className="container">
           <div className="header-inner">
-            <motion.div 
+            <motion.div
               className="logo"
               onClick={() => onNavigate('home')}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <motion.div 
+              <motion.div
                 className="logo-icon"
                 whileHover={{ rotate: [0, -5, 5, 0] }}
                 transition={{ duration: 0.5 }}
@@ -68,26 +77,37 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
               ))}
             </nav>
 
-            <motion.button 
+            {/* Desktop: single Login button */}
+            <div className="auth-actions">
+              <motion.button
+                type="button"
+                className="auth-btn auth-btn--ghost"
+                onClick={() => openAuth('login')}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Login
+              </motion.button>
+            </div>
+
+            <motion.button
               className="menu-button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               <div className="menu-icon">
-                <motion.span 
-                  animate={{ 
+                <motion.span
+                  animate={{
                     rotate: mobileMenuOpen ? 45 : 0,
-                    y: mobileMenuOpen ? 6 : 0
+                    y: mobileMenuOpen ? 6 : 0,
                   }}
                 />
-                <motion.span 
-                  animate={{ opacity: mobileMenuOpen ? 0 : 1 }}
-                />
-                <motion.span 
-                  animate={{ 
+                <motion.span animate={{ opacity: mobileMenuOpen ? 0 : 1 }} />
+                <motion.span
+                  animate={{
                     rotate: mobileMenuOpen ? -45 : 0,
-                    y: mobileMenuOpen ? -6 : 0
+                    y: mobileMenuOpen ? -6 : 0,
                   }}
                 />
               </div>
@@ -100,7 +120,7 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
         {mobileMenuOpen && (
           <>
             {/* Backdrop */}
-            <motion.div 
+            <motion.div
               className="mobile-nav-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -108,13 +128,14 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
               transition={{ duration: 0.2 }}
               onClick={() => setMobileMenuOpen(false)}
             />
+
             {/* Menu */}
-            <motion.nav 
+            <motion.nav
               className="mobile-nav"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
             >
               {navItems.map((item, index) => (
                 <motion.span
@@ -128,10 +149,30 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
                   {item.label}
                 </motion.span>
               ))}
+
+              {/* Mobile: single Login button */}
+              <div className="mobile-auth">
+                <motion.button
+                  type="button"
+                  className="mobile-auth-btn mobile-auth-btn--ghost"
+                  onClick={() => openAuth('login')}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Login
+                </motion.button>
+              </div>
             </motion.nav>
           </>
         )}
       </AnimatePresence>
+
+      {/* Auth Modal */}
+      <AuthModal
+        open={authOpen}
+        mode={authMode}
+        onClose={() => setAuthOpen(false)}
+        onSwitchMode={(m) => setAuthMode(m)}
+      />
     </>
   );
 };
