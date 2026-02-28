@@ -62,23 +62,22 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
               </div>
             </motion.div>
 
-            <nav className="nav">
-              {navItems.map((item, index) => (
-                <motion.span
-                  key={item.page}
-                  className={`nav-link ${currentPage === item.page ? 'active' : ''}`}
-                  onClick={() => handleNavClick(item.page)}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * index, duration: 0.3 }}
-                >
-                  {item.label}
-                </motion.span>
-              ))}
-            </nav>
+            <div className="nav-group">
+              <nav className="nav">
+                {navItems.map((item, index) => (
+                  <motion.span
+                    key={item.page}
+                    className={`nav-link ${currentPage === item.page ? 'active' : ''}`}
+                    onClick={() => handleNavClick(item.page)}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * index, duration: 0.3 }}
+                  >
+                    {item.label}
+                  </motion.span>
+                ))}
+              </nav>
 
-            {/* Desktop: single Login button */}
-            <div className="auth-actions">
               <motion.button
                 type="button"
                 className="auth-btn auth-btn--ghost"

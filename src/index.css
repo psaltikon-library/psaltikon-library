@@ -448,14 +448,45 @@ a:hover {
   background: rgba(139, 38, 53, 0.05);
 }
 
+.nav-group {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;     /* vertical alignment anchor */
+  justify-content: center;
+  min-height: 56px;        /* ensures a consistent header row height */
+}
+
+.nav-group .nav {
+  display: flex;
+  align-items: center;     /* keeps link text centered */
+  justify-content: center;
+  gap: var(--space-xl);
+}
+
+/* Pin Login right, but align it using the same container height */
+.nav-group .auth-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 40px;            /* same “pill” height */
+  margin: 8px 0;           /* (56px container - 40px button) / 2 = 8px */
+  display: inline-flex;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
-  .nav {
+  .nav-group {
     display: none;
   }
-  
+
+  .auth-actions {
+    display: none; 
+  }
   .menu-button {
     display: flex;
   }
+
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
