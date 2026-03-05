@@ -8,7 +8,7 @@ type Props = {
 export default function AdminPage({ onNavigate }: Props) {
   useEffect(() => {
     const ok = localStorage.getItem("psaltikon_admin_authed") === "true";
-    if (!ok) onNavigate("home"); // kicks out if not authed
+    if (!ok) onNavigate("home"); // or "admin-login" if you prefer
   }, [onNavigate]);
 
   const logout = () => {
@@ -22,13 +22,13 @@ export default function AdminPage({ onNavigate }: Props) {
         <div>
           <h1 className="section-title" style={{ marginBottom: 6 }}>Admin Dashboard</h1>
           <p className="section-subtitle" style={{ marginTop: 0 }}>
-            Manage chants + users (UI first, DB later).
+            (UI only for now) Manage chants + users later.
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="button button-secondary" onClick={() => onNavigate("library")}>
-            Back to Library
+            Go to Library
           </button>
           <button className="button button-primary" onClick={logout}>
             Logout
@@ -37,11 +37,10 @@ export default function AdminPage({ onNavigate }: Props) {
       </div>
 
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>Coming next</div>
-        <ul style={{ margin: 0, paddingLeft: 18, opacity: 0.9 }}>
-          <li>Chants tab + “Upload Chant”</li>
-          <li>Users tab + toggle admin</li>
-        </ul>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>Next step</div>
+        <div style={{ opacity: 0.85 }}>
+          Add tabs: Chants (Upload Chant) + Users (toggle admin). We’ll wire DB later.
+        </div>
       </div>
     </div>
   );

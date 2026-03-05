@@ -8,6 +8,7 @@ import ChantDetailPage from './pages/ChantDetailPage';
 import PhoneticsPage from './pages/PhoneticsPage';
 import CompositionsPage from './pages/CompositionsPage';
 import AboutPage from './pages/AboutPage';
+import AdminPage from './pages/AdminPage';
 import { Page } from './types';
 
 // Loading screen component
@@ -162,7 +163,13 @@ function App() {
           />
         );
       case 'about':
-        return <AboutPage />;
+        return <AboutPage onNavigate={navigateTo} />;
+      case 'admin':
+        return (
+          <AdminPage
+            onNavigate={navigateTo}
+          />
+        );
       default:
         return <HomePage onNavigate={navigateTo} onViewChant={navigateToChant} />;
     }

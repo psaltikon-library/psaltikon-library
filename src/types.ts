@@ -1,4 +1,4 @@
-export type Page = 'home' | 'library' | 'chant-detail' | 'phonetics' | 'compositions' | 'about';
+export type Page = 'home' | 'library' | 'chant-detail' | 'phonetics' | 'compositions' | 'about' | "admin";
 
 export interface Chant {
   id: string;
