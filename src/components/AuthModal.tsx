@@ -105,7 +105,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
     <AnimatePresence>
       {open && (
         <motion.div
-          className="auth-modal-overlay"
+          className={`auth-modal-overlay ${isSignup ? "auth-modal-overlay--signup" : "auth-modal-overlay--login"}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -123,7 +123,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
           />
 
           <motion.div
-            className="auth-modal"
+            className={`auth-modal ${isSignup ? "auth-modal--signup" : "auth-modal--login"}`}
             initial={{ y: 18, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 14, opacity: 0, scale: 0.98 }}
