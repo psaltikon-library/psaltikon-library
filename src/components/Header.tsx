@@ -84,7 +84,7 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
     setMobileMenuOpen(false);
 
     if (action === "admin") {
-      onNavigate("home");
+      onNavigate("admin");
       return;
     }
 

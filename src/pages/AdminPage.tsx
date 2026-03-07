@@ -17,8 +17,8 @@ export default function AdminPage({ onNavigate }: Props) {
   };
 
   return (
-    <div className="container" style={{ paddingTop: 28, paddingBottom: 48 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    <div className="container admin-page">
+      <div className="admin-page__header">
         <div>
           <h1 className="section-title" style={{ marginBottom: 6 }}>Admin Dashboard</h1>
           <p className="section-subtitle" style={{ marginTop: 0 }}>
@@ -26,7 +26,7 @@ export default function AdminPage({ onNavigate }: Props) {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="admin-page__actions">
           <button className="button button-secondary" onClick={() => onNavigate("library")}>
             Go to Library
           </button>
@@ -36,9 +36,9 @@ export default function AdminPage({ onNavigate }: Props) {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>Next step</div>
-        <div style={{ opacity: 0.85 }}>
+      <div className="card admin-page__card">
+        <div className="admin-page__card-title">Next step</div>
+        <div className="admin-page__card-text">
           Add tabs: Chants (Upload Chant) + Users (toggle admin). We’ll wire DB later.
         </div>
       </div>

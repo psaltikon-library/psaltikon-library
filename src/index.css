@@ -784,6 +784,64 @@ a:hover {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.admin-page {
+  padding-top: calc(100px + var(--space-xl));
+  padding-bottom: var(--space-3xl);
+}
+
+.admin-page__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.admin-page__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-page__card {
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.admin-page__card-title {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.admin-page__card-text {
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding-top: calc(80px + var(--space-lg));
+    padding-bottom: var(--space-2xl);
+  }
+
+  .admin-page__actions {
+    width: 100%;
+  }
+
+  .admin-page__actions .button,
+  .admin-page__actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MODERN CARDS
    ═══════════════════════════════════════════════════════════════════════════ */
 

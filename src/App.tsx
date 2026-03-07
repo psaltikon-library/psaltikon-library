@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -10,6 +10,48 @@ import CompositionsPage from './pages/CompositionsPage';
 import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import { Page } from './types';
+
+const STORAGE_PAGE_KEY = 'psaltikon_current_page';
+const STORAGE_CHANT_KEY = 'psaltikon_selected_chant';
+
+const validPages: Page[] = [
+  'home',
+  'library',
+  'chant-detail',
+  'phonetics',
+  'compositions',
+  'about',
+  'admin',
+];
+
+const isValidPage = (value: string | null): value is Page => {
+  return value !== null && validPages.includes(value as Page);
+};
+
+const getRouteState = (): { page: Page; chantId: string | null } => {
+  const params = new URLSearchParams(window.location.search);
+  const urlPage = params.get('page');
+  const urlChantId = params.get('chantId');
+
+  if (isValidPage(urlPage)) {
+    return {
+      page: urlPage,
+      chantId: urlPage === 'chant-detail' ? urlChantId : null,
+    };
+  }
+
+  const savedPage = localStorage.getItem(STORAGE_PAGE_KEY);
+  const savedChantId = localStorage.getItem(STORAGE_CHANT_KEY);
+
+  if (isValidPage(savedPage)) {
+    return {
+      page: savedPage,
+      chantId: savedPage === 'chant-detail' ? savedChantId : null,
+    };
+  }
+
+  return { page: 'home', chantId: null };
+};
 
 // Loading screen component
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
@@ -104,10 +146,39 @@ const pageVariants = {
 };
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [selectedChantId, setSelectedChantId] = useState<string | null>(null);
+  const initialRoute = getRouteState();
+  const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
+  const [selectedChantId, setSelectedChantId] = useState<string | null>(initialRoute.chantId);
   const [isLoading, setIsLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const syncRoute = useCallback(
+    (page: Page, chantId: string | null, mode: 'push' | 'replace' = 'push') => {
+      const params = new URLSearchParams();
+      params.set('page', page);
+
+      if (page === 'chant-detail' && chantId) {
+        params.set('chantId', chantId);
+      }
+
+      const nextUrl = `${window.location.pathname}?${params.toString()}`;
+
+      if (mode === 'replace') {
+        window.history.replaceState({ page, chantId }, '', nextUrl);
+      } else {
+        window.history.pushState({ page, chantId }, '', nextUrl);
+      }
+
+      localStorage.setItem(STORAGE_PAGE_KEY, page);
+
+      if (page === 'chant-detail' && chantId) {
+        localStorage.setItem(STORAGE_CHANT_KEY, chantId);
+      } else {
+        localStorage.removeItem(STORAGE_CHANT_KEY);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -117,14 +188,36 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    syncRoute(currentPage, selectedChantId, 'replace');
+
+    const handlePopState = () => {
+      const route = getRouteState();
+      setCurrentPage(route.page);
+      setSelectedChantId(route.chantId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentPage, selectedChantId, syncRoute]);
+
   const navigateToChant = (chantId: string) => {
     setSelectedChantId(chantId);
     setCurrentPage('chant-detail');
+    syncRoute('chant-detail', chantId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const navigateTo = (page: Page) => {
+    const nextChantId = page === 'chant-detail' ? selectedChantId : null;
     setCurrentPage(page);
+
+    if (page !== 'chant-detail') {
+      setSelectedChantId(null);
+    }
+
+    syncRoute(page, nextChantId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
