@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type UploadChantModalProps = {
@@ -17,6 +17,8 @@ export default function UploadChantModal({
   const [tone, setTone] = useState("");
   const [language, setLanguage] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () => {
     setTitle("");
@@ -28,8 +30,38 @@ export default function UploadChantModal({
     setPdfFile(null);
   };
 
+  const applyPdfFile = (file: File | null) => {
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      alert("Please upload a PDF file only.");
+      return;
+    }
+
+    setPdfFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    applyPdfFile(e.dataTransfer.files?.[0] || null);
+  };
+
   useEffect(() => {
-    if (!open) resetForm();
+    if (!open) {
+      resetForm();
+      setIsDragOver(false);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -116,8 +148,8 @@ export default function UploadChantModal({
               </button>
             </div>
 
-            <form className="auth-modal-body" onSubmit={handleSubmit}>
-              <div className="auth-field">
+            <form className="auth-modal-body upload-chant-form" onSubmit={handleSubmit}>
+              <div className="auth-field upload-chant-form__title">
                 <label className="auth-label">Chant Title *</label>
                 <input
                   className="auth-input"
@@ -129,102 +161,132 @@ export default function UploadChantModal({
                 />
               </div>
 
-              <div className="auth-field">
-                <label className="auth-label">Feast</label>
-                <select
-                  className="auth-input"
-                  value={feast}
-                  onChange={(e) => setFeast(e.target.value)}
-                >
-                  <option value="">None</option>
-                  <option value="Pascha">Pascha</option>
-                  <option value="Nativity">Nativity</option>
-                  <option value="Theophany">Theophany</option>
-                  <option value="Pentecost">Pentecost</option>
-                  <option value="Sunday">Sunday</option>
-                </select>
+              <div className="upload-chant-form__content">
+                <div className="upload-chant-form__fields">
+                  <div className="auth-field">
+                    <label className="auth-label">Feast</label>
+                    <select
+                      className="auth-input"
+                      value={feast}
+                      onChange={(e) => setFeast(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Pascha">Pascha</option>
+                      <option value="Nativity">Nativity</option>
+                      <option value="Theophany">Theophany</option>
+                      <option value="Pentecost">Pentecost</option>
+                      <option value="Sunday">Sunday</option>
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Service</label>
+                    <select
+                      className="auth-input"
+                      value={service}
+                      onChange={(e) => setService(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Divine Liturgy">Divine Liturgy</option>
+                      <option value="Matins">Matins</option>
+                      <option value="Vespers">Vespers</option>
+                      <option value="Orthros">Orthros</option>
+                      <option value="Compline">Compline</option>
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Part of Service</label>
+                    <select
+                      className="auth-input"
+                      value={part}
+                      onChange={(e) => setPart(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Apolytikion">Apolytikion</option>
+                      <option value="Troparion">Troparion</option>
+                      <option value="Kontakion">Kontakion</option>
+                      <option value="Cherubikon">Cherubikon</option>
+                      <option value="Doxology">Doxology</option>
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Tone (Echos)</label>
+                    <select
+                      className="auth-input"
+                      value={tone}
+                      onChange={(e) => setTone(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Tone 1">Tone 1</option>
+                      <option value="Tone 2">Tone 2</option>
+                      <option value="Tone 3">Tone 3</option>
+                      <option value="Tone 4">Tone 4</option>
+                      <option value="Tone 5">Tone 5</option>
+                      <option value="Tone 6">Tone 6</option>
+                      <option value="Tone 7">Tone 7</option>
+                      <option value="Tone 8">Tone 8</option>
+                    </select>
+                  </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Language</label>
+                    <select
+                      className="auth-input"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      <option value="Arabic">Arabic</option>
+                      <option value="Arabic Phonetics">Arabic Phonetics</option>
+                      <option value="Greek">Greek</option>
+                      <option value="Greek Phonetics">Greek Phonetics</option>
+                      <option value="English">English</option>
+                      <option value="French">French</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="auth-field upload-chant-form__upload-field">
+                  <label className="auth-label">Upload PDF *</label>
+                  <div
+                    className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${pdfFile ? " has-file" : ""}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      className="upload-dropzone__input"
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => applyPdfFile(e.target.files?.[0] || null)}
+                    />
+
+                    <div className="upload-dropzone__icon">⇪</div>
+                    <div className="upload-dropzone__title">
+                      {pdfFile ? pdfFile.name : "Drag & drop a PDF here"}
+                    </div>
+                    <div className="upload-dropzone__subtitle">
+                      {pdfFile
+                        ? "PDF selected. Click to replace it."
+                        : "or click to browse your files"}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="auth-field">
-                <label className="auth-label">Service</label>
-                <select
-                  className="auth-input"
-                  value={service}
-                  onChange={(e) => setService(e.target.value)}
-                >
-                  <option value="">None</option>
-                  <option value="Divine Liturgy">Divine Liturgy</option>
-                  <option value="Matins">Matins</option>
-                  <option value="Vespers">Vespers</option>
-                  <option value="Orthros">Orthros</option>
-                  <option value="Compline">Compline</option>
-                </select>
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">Part of Service</label>
-                <select
-                  className="auth-input"
-                  value={part}
-                  onChange={(e) => setPart(e.target.value)}
-                >
-                  <option value="">None</option>
-                  <option value="Apolytikion">Apolytikion</option>
-                  <option value="Troparion">Troparion</option>
-                  <option value="Kontakion">Kontakion</option>
-                  <option value="Cherubikon">Cherubikon</option>
-                  <option value="Doxology">Doxology</option>
-                </select>
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">Tone (Echos)</label>
-                <select
-                  className="auth-input"
-                  value={tone}
-                  onChange={(e) => setTone(e.target.value)}
-                >
-                  <option value="">None</option>
-                  <option value="Tone 1">Tone 1</option>
-                  <option value="Tone 2">Tone 2</option>
-                  <option value="Tone 3">Tone 3</option>
-                  <option value="Tone 4">Tone 4</option>
-                  <option value="Tone 5">Tone 5</option>
-                  <option value="Tone 6">Tone 6</option>
-                  <option value="Tone 7">Tone 7</option>
-                  <option value="Tone 8">Tone 8</option>
-                </select>
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">Language</label>
-                <select
-                  className="auth-input"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                >
-                  <option value="">None</option>
-                  <option value="Arabic">Arabic</option>
-                  <option value="Arabic Phonetics">Arabic Phonetics</option>
-                  <option value="Greek">Greek</option>
-                  <option value="Greek Phonetics">Greek Phonetics</option>
-                  <option value="English">English</option>
-                  <option value="French">French</option>
-                </select>
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">Upload PDF *</label>
-                <input
-                  className="auth-input"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                  required
-                />
-              </div>
-
-              <button type="submit" className="auth-submit">
+              <button type="submit" className="auth-submit upload-chant-form__submit">
                 Upload Chant
               </button>
             </form>
