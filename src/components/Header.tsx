@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Page } from "../types";
 import AuthModal from "./AuthModal";
@@ -14,9 +14,33 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [isUserAuthed, setIsUserAuthed] = useState(false);
+  const [isAdminAuthed, setIsAdminAuthed] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setIsUserAuthed(localStorage.getItem("psaltikon_user_authed") === "true");
+    const syncAuthState = () => {
+      setIsUserAuthed(localStorage.getItem("psaltikon_user_authed") === "true");
+      setIsAdminAuthed(localStorage.getItem("psaltikon_admin_authed") === "true");
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(event.target as Node)
+      ) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    syncAuthState();
+    window.addEventListener("storage", syncAuthState);
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("storage", syncAuthState);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const navItems: { page: Page; label: string }[] = [
@@ -26,6 +50,7 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
     { page: "compositions", label: "Compositions" },
     { page: "about", label: "About" },
   ];
+
 
   const handleNavClick = (page: Page) => {
     onNavigate(page);
@@ -42,17 +67,45 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
     localStorage.removeItem("psaltikon_user_authed");
     localStorage.removeItem("psaltikon_admin_authed");
     setIsUserAuthed(false);
+    setIsAdminAuthed(false);
+    setAccountMenuOpen(false);
     setMobileMenuOpen(false);
     // simple + reliable for now
     window.location.reload();
   };
 
   const handleAccountClick = () => {
-    // UI only for now — later we swap this for a real Account modal
-    const shouldSignOut = window.confirm(
-      "Account settings coming soon.\n\nDo you want to sign out?"
-    );
-    if (shouldSignOut) signOut();
+    setIsAdminAuthed(localStorage.getItem("psaltikon_admin_authed") === "true");
+    setAccountMenuOpen((prev) => !prev);
+  };
+
+  const handleAccountAction = (action: string) => {
+    setAccountMenuOpen(false);
+    setMobileMenuOpen(false);
+
+    if (action === "admin") {
+      onNavigate("home");
+      return;
+    }
+
+    if (action === "profile") {
+      window.alert("Profile page coming soon.");
+      return;
+    }
+
+    if (action === "saved") {
+      window.alert("Saved items coming soon.");
+      return;
+    }
+
+    if (action === "settings") {
+      window.alert("Account settings coming soon.");
+      return;
+    }
+
+    if (action === "signout") {
+      signOut();
+    }
   };
 
   return (
@@ -102,15 +155,83 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
 
               {/* Desktop: Login OR Account */}
               {isUserAuthed ? (
-                <motion.button
-                  type="button"
-                  className="auth-btn auth-btn--ghost"
-                  onClick={handleAccountClick}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Account
-                </motion.button>
+                <div ref={accountMenuRef} className="account-menu-wrap">
+                  <motion.button
+                    type="button"
+                    onClick={handleAccountClick}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="auth-btn auth-btn--ghost account-trigger"
+                  >
+                    <span aria-hidden="true" className="account-trigger__icon">
+                      <span className="account-trigger__bar" />
+                      <span className="account-trigger__bar" />
+                      <span className="account-trigger__bar" />
+                    </span>
+                    <span>Account</span>
+                  </motion.button>
+
+                  <AnimatePresence>
+                    {accountMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="account-menu-panel"
+                      >
+                        <div className="account-menu-label">
+                          My Account
+                        </div>
+
+                        <div className="account-menu-list">
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("profile")}
+                            className="account-menu-item"
+                          >
+                            <span>Profile</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("saved")}
+                            className="account-menu-item"
+                          >
+                            <span>Saved Items</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("settings")}
+                            className="account-menu-item"
+                          >
+                            <span>Settings</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          {isAdminAuthed && (
+                            <button
+                              type="button"
+                              onClick={() => handleAccountAction("admin")}
+                              className="account-menu-item"
+                            >
+                              <span>Admin</span>
+                              <span aria-hidden="true">›</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("signout")}
+                            className="account-menu-item account-menu-item--signout"
+                          >
+                            <span>Sign out</span>
+                            <span aria-hidden="true">↗</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
                 <motion.button
                   type="button"
@@ -187,14 +308,68 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
               {/* Mobile: Login OR Account at bottom */}
               <div className="mobile-auth">
                 {isUserAuthed ? (
-                  <motion.button
-                    type="button"
-                    className="mobile-auth-btn mobile-auth-btn--ghost"
-                    onClick={handleAccountClick}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Account
-                  </motion.button>
+                  <>
+                    <motion.button
+                      type="button"
+                      onClick={handleAccountClick}
+                      whileTap={{ scale: 0.98 }}
+                      className="mobile-auth-btn mobile-auth-btn--ghost account-trigger account-trigger--mobile"
+                    >
+                      <span aria-hidden="true" className="account-trigger__icon">
+                        <span className="account-trigger__bar" />
+                        <span className="account-trigger__bar" />
+                        <span className="account-trigger__bar" />
+                      </span>
+                      <span>Account</span>
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {accountMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.18 }}
+                          className="account-menu-panel account-menu-panel--mobile"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("profile")}
+                            className="account-menu-item"
+                          >
+                            <span>Profile</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("saved")}
+                            className="account-menu-item"
+                          >
+                            <span>Saved Items</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("settings")}
+                            className="account-menu-item"
+                          >
+                            <span>Settings</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          {isAdminAuthed && (
+                            <button
+                              type="button"
+                              onClick={() => handleAccountAction("admin")}
+                              className="account-menu-item"
+                            >
+                              <span>Admin</span>
+                              <span aria-hidden="true">›</span>
+                            </button>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
                 ) : (
                   <motion.button
                     type="button"

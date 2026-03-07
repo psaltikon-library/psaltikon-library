@@ -660,10 +660,117 @@ a:hover {
   box-shadow: var(--shadow-sm);
 }
 
+
 .mobile-auth-btn--ghost:hover {
   border-color: var(--burgundy);
   color: var(--burgundy);
   box-shadow: var(--shadow-md);
+}
+
+/* Account menu */
+.account-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-trigger--mobile {
+  justify-content: center;
+}
+
+.account-trigger__icon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.account-trigger__bar {
+  width: 14px;
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  display: block;
+}
+
+.account-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 260px;
+  padding: 10px;
+  z-index: 1000;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: rgba(253, 252, 250, 0.96);
+  color: var(--text-primary);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-xl);
+}
+
+.account-menu-panel--mobile {
+  position: static;
+  min-width: 100%;
+  margin-top: 10px;
+}
+
+.account-menu-label {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 4px 8px 10px;
+}
+
+.account-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+
+.account-menu-item:hover {
+  background: rgba(139, 38, 53, 0.06);
+  color: var(--burgundy);
+}
+
+.account-menu-item:focus-visible {
+  outline: none;
+  background: rgba(139, 38, 53, 0.08);
+  color: var(--burgundy);
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.12);
+}
+
+.account-menu-item--signout {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+  border-radius: 0;
 }
 
 @media (max-width: 900px) {
