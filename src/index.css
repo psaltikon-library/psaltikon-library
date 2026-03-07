@@ -2723,6 +2723,10 @@ a:hover {
     max-height: calc(100dvh - 24px);
   }
 
+  .auth-modal-body {
+    overflow-y: auto;
+  }
+
   .auth-modal-header,
   .auth-modal-body {
     padding: 16px;
@@ -2775,6 +2779,10 @@ a:hover {
   .auth-modal--signup {
     width: 100%;
     max-height: calc(100dvh - 24px);
+  }
+
+  .auth-modal-body {
+    overflow-y: auto;
   }
 
   .upload-chant-form__content {
