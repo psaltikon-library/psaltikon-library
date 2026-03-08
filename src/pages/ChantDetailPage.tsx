@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
@@ -63,6 +63,73 @@ export async function downloadPdf(file: string | File, downloadName?: string) {
   // Case 2: file is a URL (local public/ file or remote)
   const filename = downloadName || guessFileNameFromUrl(file);
   await downloadUrlAsFile(file, filename);
+}
+
+function resolveChantPdfPath(chant: Chant | null): string {
+  const anyChant = chant as any;
+  if (!anyChant) return '';
+
+  const direct =
+    anyChant.pdfUrl ||
+    anyChant.pdfURL ||
+    anyChant.pdfPath ||
+    anyChant.pdf_path ||
+    anyChant.pdf ||
+    anyChant.pdfFile ||
+    anyChant.pdf_file ||
+    anyChant.fileUrl ||
+    anyChant.fileURL ||
+    anyChant.filePath ||
+    anyChant.scorePdf ||
+    anyChant.scorePDF ||
+    anyChant.sheetPdf ||
+    anyChant.sheetPDF ||
+    anyChant.musicPdf ||
+    anyChant.musicPDF;
+
+  const nested =
+    anyChant.assets?.pdf ||
+    anyChant.assets?.pdfUrl ||
+    anyChant.assets?.pdfURL ||
+    anyChant.files?.pdf ||
+    anyChant.files?.pdfUrl ||
+    anyChant.files?.pdfURL ||
+    anyChant.document?.pdf ||
+    anyChant.document?.pdfUrl ||
+    anyChant.document?.pdfURL ||
+    anyChant.file?.pdf ||
+    anyChant.file?.url ||
+    anyChant.file?.path;
+
+  const fromArray = Array.isArray(anyChant.files)
+    ? (anyChant.files.find((f: any) => {
+        const url = f?.url || f?.path || f?.href;
+        const name = f?.name || f?.filename;
+        return (
+          (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+          (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+        );
+      })?.url ||
+        anyChant.files.find((f: any) => {
+          const url = f?.url || f?.path || f?.href;
+          const name = f?.name || f?.filename;
+          return (
+            (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+            (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+          );
+        })?.path ||
+        anyChant.files.find((f: any) => {
+          const url = f?.url || f?.path || f?.href;
+          const name = f?.name || f?.filename;
+          return (
+            (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+            (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+          );
+        })?.href)
+    : undefined;
+
+  const candidate = direct || nested || fromArray || '';
+  return typeof candidate === 'string' ? candidate.trim() : '';
 }
 
 function PdfToolbar({
@@ -378,72 +445,7 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
   const chantTitle = chant?.title || 'Chant';
   const hasChant = !!chant;
 
-  const pdfPath = useMemo(() => {
-    const anyChant = chant as any;
-    if (!anyChant) return '';
-
-    const direct =
-      anyChant.pdfUrl ||
-      anyChant.pdfURL ||
-      anyChant.pdfPath ||
-      anyChant.pdf_path ||
-      anyChant.pdf ||
-      anyChant.pdfFile ||
-      anyChant.pdf_file ||
-      anyChant.fileUrl ||
-      anyChant.fileURL ||
-      anyChant.filePath ||
-      anyChant.scorePdf ||
-      anyChant.scorePDF ||
-      anyChant.sheetPdf ||
-      anyChant.sheetPDF ||
-      anyChant.musicPdf ||
-      anyChant.musicPDF;
-
-    const nested =
-      anyChant.assets?.pdf ||
-      anyChant.assets?.pdfUrl ||
-      anyChant.assets?.pdfURL ||
-      anyChant.files?.pdf ||
-      anyChant.files?.pdfUrl ||
-      anyChant.files?.pdfURL ||
-      anyChant.document?.pdf ||
-      anyChant.document?.pdfUrl ||
-      anyChant.document?.pdfURL ||
-      anyChant.file?.pdf ||
-      anyChant.file?.url ||
-      anyChant.file?.path;
-
-    const fromArray = Array.isArray(anyChant.files)
-      ? (anyChant.files.find((f: any) => {
-          const url = f?.url || f?.path || f?.href;
-          const name = f?.name || f?.filename;
-          return (
-            (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-            (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-          );
-        })?.url ||
-          anyChant.files.find((f: any) => {
-            const url = f?.url || f?.path || f?.href;
-            const name = f?.name || f?.filename;
-            return (
-              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-            );
-          })?.path ||
-          anyChant.files.find((f: any) => {
-            const url = f?.url || f?.path || f?.href;
-            const name = f?.name || f?.filename;
-            return (
-              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-            );
-          })?.href)
-      : undefined;
-
-    const candidate = direct || nested || fromArray || '';
-    return typeof candidate === 'string' ? candidate.trim() : '';
-  }, [chant]);
+  const pdfPath = resolveChantPdfPath(chant);
 
   const [pdfSource, setPdfSource] = useState('');
 
@@ -499,9 +501,7 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pdfDownloading, setPdfDownloading] = useState(false);
 
-  const pdfFileKey = useMemo(() => {
-    return pdfSource || 'no-pdf';
-  }, [pdfSource]);
+  const pdfFileKey = pdfSource || 'no-pdf';
 
   const pdfRendererRef = useRef<PdfDocumentRendererHandle | null>(null);
   const pdfNavLockRef = useRef(false);
