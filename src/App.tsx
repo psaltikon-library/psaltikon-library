@@ -11,8 +11,6 @@ import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import { Page } from './types';
 
-const STORAGE_PAGE_KEY = 'psaltikon_current_page';
-const STORAGE_CHANT_KEY = 'psaltikon_selected_chant';
 
 const validPages: Page[] = [
   'home',
@@ -37,16 +35,6 @@ const getRouteState = (): { page: Page; chantId: string | null } => {
     return {
       page: urlPage,
       chantId: urlPage === 'chant-detail' ? urlChantId : null,
-    };
-  }
-
-  const savedPage = localStorage.getItem(STORAGE_PAGE_KEY);
-  const savedChantId = localStorage.getItem(STORAGE_CHANT_KEY);
-
-  if (isValidPage(savedPage)) {
-    return {
-      page: savedPage,
-      chantId: savedPage === 'chant-detail' ? savedChantId : null,
     };
   }
 
@@ -169,13 +157,6 @@ function App() {
         window.history.pushState({ page, chantId }, '', nextUrl);
       }
 
-      localStorage.setItem(STORAGE_PAGE_KEY, page);
-
-      if (page === 'chant-detail' && chantId) {
-        localStorage.setItem(STORAGE_CHANT_KEY, chantId);
-      } else {
-        localStorage.removeItem(STORAGE_CHANT_KEY);
-      }
     },
     []
   );
