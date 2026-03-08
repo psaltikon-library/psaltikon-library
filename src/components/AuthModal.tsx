@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 
 type AuthMode = "login" | "signup";
 
@@ -29,6 +30,8 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   const resetFields = () => {
     setIdentifier("");
@@ -44,6 +47,8 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
     setShowPassword(false);
     setShowSignupPassword(false);
     setShowSignupConfirmPassword(false);
+    setIsSubmitting(false);
+    setAuthError("");
   };
 
   // ESC to close
@@ -80,6 +85,32 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
     if (!signupPassword || !signupConfirmPassword) return true;
     return signupPassword === signupConfirmPassword;
   }, [isSignup, signupPassword, signupConfirmPassword]);
+
+  const syncLegacyAuthFlags = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      localStorage.removeItem("psaltikon_user_authed");
+      localStorage.removeItem("psaltikon_admin_authed");
+      return;
+    }
+
+    localStorage.setItem("psaltikon_user_authed", "true");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("admin")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.admin) {
+      localStorage.setItem("psaltikon_admin_authed", "true");
+    } else {
+      localStorage.removeItem("psaltikon_admin_authed");
+    }
+  };
 
   // Shared inline styles to force full-width inputs (fixes the shrink issue)
   const passwordWrapStyle: React.CSSProperties = {
@@ -138,7 +169,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
                     {isSignup ? "Create an account" : "Welcome back"}
                   </div>
                   <div className="auth-modal-subtitle">
-                    {isSignup ? "Create an account to continue." : "Log in with your username or email."}
+                    {isSignup ? "Create an account to continue." : "Log in with your email and password."}
                   </div>
                 </div>
               </div>
@@ -158,50 +189,101 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
 
             <form
               className="auth-modal-body"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+                setAuthError("");
+                setIsSubmitting(true);
 
-                // LOGIN
-                if (!isSignup) {
-                  // Hardcoded admin/admin => admin authed + user authed
-                  if (identifier.trim() === "admin" && password === "admin") {
-                    localStorage.setItem("psaltikon_admin_authed", "true");
-                    localStorage.setItem("psaltikon_user_authed", "true");
+                try {
+                  if (!isSignup) {
+                    const trimmedIdentifier = identifier.trim().toLowerCase();
+
+                    const { error } = await supabase.auth.signInWithPassword({
+                      email: trimmedIdentifier,
+                      password,
+                    });
+
+                    if (error) {
+                      setAuthError(error.message || "Unable to log in.");
+                      setIsSubmitting(false);
+                      return;
+                    }
+
+                    await syncLegacyAuthFlags();
                     resetFields();
                     onClose();
                     window.location.reload();
                     return;
                   }
 
-                  // UI-only "normal" login for now:
-                  // we just mark user as logged in so navbar shows Account.
-                  localStorage.setItem("psaltikon_user_authed", "true");
+                  if (!signupPasswordsMatch) {
+                    setAuthError("Passwords do not match.");
+                    setIsSubmitting(false);
+                    return;
+                  }
+
+                  const trimmedEmail = signupEmail.trim().toLowerCase();
+                  const trimmedUsername = signupUsername.trim();
+                  const trimmedFirstName = signupFirstName.trim();
+                  const trimmedLastName = signupLastName.trim();
+
+                  const { data, error } = await supabase.auth.signUp({
+                    email: trimmedEmail,
+                    password: signupPassword,
+                    options: {
+                      data: {
+                        first_name: trimmedFirstName,
+                        last_name: trimmedLastName,
+                        username: trimmedUsername,
+                      },
+                    },
+                  });
+
+                  if (error) {
+                    setAuthError(error.message || "Unable to create account.");
+                    setIsSubmitting(false);
+                    return;
+                  }
+
+                  const userId = data.user?.id;
+
+                  if (userId) {
+                    const { error: profileError } = await supabase.from("profiles").upsert({
+                      id: userId,
+                      username: trimmedUsername,
+                      first_name: trimmedFirstName || null,
+                      last_name: trimmedLastName || null,
+                      admin: false,
+                    });
+
+                    if (profileError) {
+                      setAuthError(profileError.message || "Account created, but profile setup failed.");
+                      setIsSubmitting(false);
+                      return;
+                    }
+                  }
+
+                  await syncLegacyAuthFlags();
                   resetFields();
                   onClose();
                   window.location.reload();
-                  return;
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : "Something went wrong.";
+                  setAuthError(message);
+                  setIsSubmitting(false);
                 }
-
-                // SIGNUP (UI-only)
-                if (!signupPasswordsMatch) return;
-
-                // Simulate signup => mark logged in
-                localStorage.setItem("psaltikon_user_authed", "true");
-                resetFields();
-                onClose();
-                window.location.reload();
               }}
             >
               {/* LOGIN MODE */}
               {!isSignup && (
                 <>
                   <div className="auth-field">
-                    <label className="auth-label">Username or Email</label>
+                    <label className="auth-label">Email</label>
                     <input
                       className="auth-input"
                       type="text"
                       required
-                      placeholder="username or you@example.com"
+                      placeholder="you@example.com"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       autoComplete="username"
@@ -364,8 +446,17 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
                 </>
               )}
 
-              <button type="submit" className="auth-submit" disabled={isSignup && !signupPasswordsMatch}>
-                {isSignup ? "Create Account" : "Log In"}
+              {authError && (
+                <div style={{ color: "var(--burgundy)", fontSize: 13, marginTop: -4 }}>
+                  {authError}
+                </div>
+              )}
+              <button
+                type="submit"
+                className="auth-submit"
+                disabled={isSubmitting || (isSignup && !signupPasswordsMatch)}
+              >
+                {isSubmitting ? (isSignup ? "Creating Account..." : "Logging In...") : isSignup ? "Create Account" : "Log In"}
               </button>
 
               <div className="auth-switch">
