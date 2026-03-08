@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 
 type UploadChantModalProps = {
   open: boolean;
@@ -18,6 +19,7 @@ export default function UploadChantModal({
   const [language, setLanguage] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () => {
@@ -28,6 +30,22 @@ export default function UploadChantModal({
     setTone("");
     setLanguage("");
     setPdfFile(null);
+    setIsSubmitting(false);
+  };
+  const buildPdfPath = (file: File, chantTitle: string) => {
+    const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+    const safeTitle = chantTitle
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const uniqueId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    return `chants/${uniqueId}-${safeTitle || "untitled"}.${extension}`;
   };
 
   const applyPdfFile = (file: File | null) => {
@@ -75,10 +93,12 @@ export default function UploadChantModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim()) {
+    const trimmedTitle = title.trim();
+
+    if (!trimmedTitle) {
       alert("Please enter a chant title.");
       return;
     }
@@ -88,18 +108,48 @@ export default function UploadChantModal({
       return;
     }
 
-    // UI only for now
-    console.log("Upload Chant Payload:", {
-      title,
-      feast,
-      service,
-      part,
-      tone,
-      language,
-      pdfFile,
-    });
+    setIsSubmitting(true);
 
-    alert("Chant upload form submitted. DB not connected yet.");
+    const pdfPath = buildPdfPath(pdfFile, trimmedTitle);
+
+    const { error: uploadError } = await supabase.storage
+      .from("chant-pdfs")
+      .upload(pdfPath, pdfFile, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      setIsSubmitting(false);
+      alert(uploadError.message || "Failed to upload PDF.");
+      return;
+    }
+
+    const payload = {
+      title: trimmedTitle,
+      english_title: null,
+      tone: tone || null,
+      feast: feast || null,
+      service: service || null,
+      part: part || null,
+      language: language || null,
+      composer: null,
+      pdf_path: pdfPath,
+      has_phonetics: false,
+      phonetics_text: null,
+    };
+
+    const { error: insertError } = await supabase.from("chants").insert(payload);
+
+    if (insertError) {
+      await supabase.storage.from("chant-pdfs").remove([pdfPath]);
+      setIsSubmitting(false);
+      alert(insertError.message || "Failed to save chant data.");
+      return;
+    }
+
+    alert("Chant uploaded successfully.");
+    resetForm();
     onClose();
   };
 
@@ -286,8 +336,12 @@ export default function UploadChantModal({
                 </div>
               </div>
 
-              <button type="submit" className="auth-submit upload-chant-form__submit">
-                Upload Chant
+              <button
+                type="submit"
+                className="auth-submit upload-chant-form__submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Uploading..." : "Upload Chant"}
               </button>
             </form>
           </motion.div>

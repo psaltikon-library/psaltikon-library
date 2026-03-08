@@ -1,8 +1,8 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
-import { Page } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
-import { mockChants } from '../data/mockChants';
+import { supabase } from '../lib/supabase';
 
 interface HomePageProps {
   onNavigate: (page: Page) => void;
@@ -19,7 +19,8 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
-  const featuredChants = mockChants.slice(0, 3);
+  const [featuredChants, setFeaturedChants] = useState<Chant[]>([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
 
   const stats = [
     { value: "500+", label: "Sacred Chants" },
@@ -49,6 +50,29 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
       description: "Find chants by feast, service, tone, or part of the service with powerful filtering."
     },
   ];
+
+  useEffect(() => {
+    const loadFeaturedChants = async () => {
+      setIsLoadingFeatured(true);
+
+      const { data, error } = await supabase
+        .from('chants')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (error) {
+        setFeaturedChants([]);
+        setIsLoadingFeatured(false);
+        return;
+      }
+
+      setFeaturedChants((data as Chant[]) || []);
+      setIsLoadingFeatured(false);
+    };
+
+    void loadFeaturedChants();
+  }, []);
 
   return (
     <>
@@ -256,16 +280,46 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
             <p>Popular selections from our sacred music collection</p>
           </motion.div>
 
-          <div className="chants-grid">
-            {featuredChants.map((chant, index) => (
-              <ChantCard
-                key={chant.id}
-                chant={chant}
-                onView={onViewChant}
-                index={index}
-              />
-            ))}
-          </div>
+          {isLoadingFeatured ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '3rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '0.75rem', opacity: 0.35 }}>⏳</div>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading featured chants...</p>
+            </div>
+          ) : featuredChants.length > 0 ? (
+            <div className="chants-grid">
+              {featuredChants.map((chant, index) => (
+                <ChantCard
+                  key={chant.id}
+                  chant={chant}
+                  onView={onViewChant}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '3rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '0.75rem', opacity: 0.35 }}>🎵</div>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                No chants available yet.
+              </p>
+            </div>
+          )}
 
           <motion.div
             style={{ textAlign: 'center', marginTop: '3rem' }}

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { phoneticsChants } from '../data/mockChants';
+import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
 
 interface PhoneticsPageProps {
@@ -10,6 +10,35 @@ interface PhoneticsPageProps {
 const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [selectedChant, setSelectedChant] = useState<Chant | null>(null);
+
+  const [phoneticsChants, setPhoneticsChants] = useState<Chant[]>([]);
+  const [isLoadingChants, setIsLoadingChants] = useState(true);
+  const [chantsError, setChantsError] = useState('');
+
+  useEffect(() => {
+    const loadPhoneticsChants = async () => {
+      setIsLoadingChants(true);
+      setChantsError('');
+
+      const { data, error } = await supabase
+        .from('chants')
+        .select('*')
+        .eq('has_phonetics', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        setPhoneticsChants([]);
+        setChantsError(error.message || 'Failed to load phonetics chants.');
+        setIsLoadingChants(false);
+        return;
+      }
+
+      setPhoneticsChants((data as Chant[]) || []);
+      setIsLoadingChants(false);
+    };
+
+    void loadPhoneticsChants();
+  }, []);
 
   return (
     <div style={{ paddingTop: '100px' }}>
@@ -64,90 +93,173 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
             </span>
           </motion.div>
 
-          {/* Chants Grid */}
-          <div className="chants-grid">
-            {phoneticsChants.map((chant: Chant, index: number) => (
-              <motion.div
-                key={chant.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
+          {isLoadingChants ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '2.5rem',
+                  marginBottom: '1rem',
+                  opacity: 0.35,
+                }}
               >
-                <motion.div
-                  className="chant-card"
-                  whileHover={{ 
-                    y: -8,
-                    boxShadow: "0 20px 40px rgba(139, 38, 53, 0.15)"
-                  }}
-                  onClick={() => setSelectedChant(chant)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="chant-card-header">
-                    <div style={{ flex: 1 }}>
-                      <h3 className="chant-card-title">{chant.title}</h3>
-                      {chant.titleGreek && (
-                        <p className="chant-card-subtitle">{chant.titleGreek}</p>
-                      )}
-                    </div>
-                    <motion.div 
-                      className="chant-card-icon"
-                      whileHover={{ scale: 1.1, rotate: 5 }}
+                ⏳
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Loading phonetics chants...</h3>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Pulling chants with phonetics from the library database.
+              </p>
+            </motion.div>
+          ) : chantsError ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '2.5rem',
+                  marginBottom: '1rem',
+                  opacity: 0.35,
+                }}
+              >
+                ⚠️
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Could not load phonetics chants</h3>
+              <p style={{ color: 'var(--text-muted)' }}>{chantsError}</p>
+            </motion.div>
+          ) : phoneticsChants.length > 0 ? (
+            <div className="chants-grid">
+              {phoneticsChants.map((chant: Chant, index: number) => {
+                const greekTitle = (chant as any).titleGreek || (chant as any).title_greek;
+                const phoneticsText = (chant as any).phoneticsText || (chant as any).phonetics_text;
+                const chantLanguage = chant.language || 'Arabic';
+
+                return (
+                  <motion.div
+                    key={chant.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <motion.div
+                      className="chant-card"
+                      whileHover={{
+                        y: -8,
+                        boxShadow: '0 20px 40px rgba(139, 38, 53, 0.15)'
+                      }}
+                      onClick={() => setSelectedChant(chant)}
+                      style={{ cursor: 'pointer' }}
                     >
-                      🔤
+                      <div className="chant-card-header">
+                        <div style={{ flex: 1 }}>
+                          <h3 className="chant-card-title">{chant.title}</h3>
+                          {greekTitle && (
+                            <p className="chant-card-subtitle">{greekTitle}</p>
+                          )}
+                        </div>
+                        <motion.div
+                          className="chant-card-icon"
+                          whileHover={{ scale: 1.1, rotate: 5 }}
+                        >
+                          🔤
+                        </motion.div>
+                      </div>
+
+                      <div className="chant-card-badges">
+                        {chant.tone && <span className="badge badge-burgundy">{chant.tone}</span>}
+                        {chant.service && <span className="badge badge-gold">{chant.service}</span>}
+                        <span className="badge badge-purple">{chantLanguage}</span>
+                      </div>
+
+                      <AnimatePresence>
+                        {showTransliteration && phoneticsText && (
+                          <motion.div
+                            className="transliteration-text"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            style={{ marginTop: '1rem', fontSize: '0.9rem' }}
+                          >
+                            {phoneticsText}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="chant-card-actions">
+                        <motion.button
+                          className="btn btn-primary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewChant(chant.id);
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          View Full
+                        </motion.button>
+                        <motion.button
+                          className="btn btn-secondary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            alert('Download feature coming soon!');
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Download
+                          <span className="coming-soon-badge">Soon</span>
+                        </motion.button>
+                      </div>
                     </motion.div>
-                  </div>
-
-                  <div className="chant-card-badges">
-                    <span className="badge badge-burgundy">{chant.tone}</span>
-                    <span className="badge badge-gold">{chant.service}</span>
-                    <span className="badge badge-purple">Arabic</span>
-                  </div>
-
-                  <AnimatePresence>
-                    {showTransliteration && chant.phoneticsText && (
-                      <motion.div
-                        className="transliteration-text"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        style={{ marginTop: '1rem', fontSize: '0.9rem' }}
-                      >
-                        {chant.phoneticsText}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <div className="chant-card-actions">
-                    <motion.button
-                      className="btn btn-primary btn-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewChant(chant.id);
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      View Full
-                    </motion.button>
-                    <motion.button
-                      className="btn btn-secondary btn-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alert('Download feature coming soon!');
-                      }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      Download
-                      <span className="coming-soon-badge">Soon</span>
-                    </motion.button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            ))}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '3rem',
+                  marginBottom: '1rem',
+                  opacity: 0.3,
+                }}
+              >
+                🔤
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>No phonetics chants found</h3>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Add chants with phonetics text in the database to have them appear here.
+              </p>
+            </motion.div>
+          )}
 
           {/* Info Box */}
           <motion.div
@@ -208,27 +320,27 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
               onClick={(e) => e.stopPropagation()}
             >
               <h2 style={{ marginBottom: '0.5rem' }}>{selectedChant.title}</h2>
-              {selectedChant.titleGreek && (
-                <p style={{ 
-                  fontFamily: 'var(--font-accent)', 
+              {((selectedChant as any).titleGreek || (selectedChant as any).title_greek) && (
+                <p style={{
+                  fontFamily: 'var(--font-accent)',
                   fontSize: '1.25rem',
                   color: 'var(--text-muted)',
                   marginBottom: '1rem'
                 }}>
-                  {selectedChant.titleGreek}
+                  {(selectedChant as any).titleGreek || (selectedChant as any).title_greek}
                 </p>
               )}
-              
+
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                <span className="badge badge-burgundy">{selectedChant.tone}</span>
-                <span className="badge badge-gold">{selectedChant.service}</span>
-                <span className="badge badge-purple">Arabic</span>
+                {selectedChant.tone && <span className="badge badge-burgundy">{selectedChant.tone}</span>}
+                {selectedChant.service && <span className="badge badge-gold">{selectedChant.service}</span>}
+                <span className="badge badge-purple">{selectedChant.language || 'Arabic'}</span>
               </div>
 
-              {selectedChant.phoneticsText && (
+              {((selectedChant as any).phoneticsText || (selectedChant as any).phonetics_text) && (
                 <div className="transliteration-text" style={{ marginBottom: '1.5rem' }}>
                   <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Phonetic Transliteration:</strong>
-                  {selectedChant.phoneticsText}
+                  {(selectedChant as any).phoneticsText || (selectedChant as any).phonetics_text}
                 </div>
               )}
 

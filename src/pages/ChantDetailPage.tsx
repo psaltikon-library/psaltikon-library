@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { mockChants, phoneticsChants, compositionsChants } from '../data/mockChants';
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { supabase } from '../lib/supabase';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -364,74 +365,117 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
   const chantTitle = chant.title;
 
-  // Resolve a PDF path/url from the chant object (robust across data shapes)
-  // const pdfSource = useMemo(() => {
-  //   const anyChant = chant as any;
-  //   if (!anyChant) return '';
+  const pdfPath = useMemo(() => {
+    const anyChant = chant as any;
+    if (!anyChant) return '';
 
-  //   const direct =
-  //     anyChant.pdfUrl ||
-  //     anyChant.pdfURL ||
-  //     anyChant.pdfPath ||
-  //     anyChant.pdf ||
-  //     anyChant.pdfFile ||
-  //     anyChant.pdf_file ||
-  //     anyChant.fileUrl ||
-  //     anyChant.fileURL ||
-  //     anyChant.filePath ||
-  //     anyChant.scorePdf ||
-  //     anyChant.scorePDF ||
-  //     anyChant.sheetPdf ||
-  //     anyChant.sheetPDF ||
-  //     anyChant.musicPdf ||
-  //     anyChant.musicPDF;
+    const direct =
+      anyChant.pdfUrl ||
+      anyChant.pdfURL ||
+      anyChant.pdfPath ||
+      anyChant.pdf_path ||
+      anyChant.pdf ||
+      anyChant.pdfFile ||
+      anyChant.pdf_file ||
+      anyChant.fileUrl ||
+      anyChant.fileURL ||
+      anyChant.filePath ||
+      anyChant.scorePdf ||
+      anyChant.scorePDF ||
+      anyChant.sheetPdf ||
+      anyChant.sheetPDF ||
+      anyChant.musicPdf ||
+      anyChant.musicPDF;
 
-  //   const nested =
-  //     anyChant.assets?.pdf ||
-  //     anyChant.assets?.pdfUrl ||
-  //     anyChant.assets?.pdfURL ||
-  //     anyChant.files?.pdf ||
-  //     anyChant.files?.pdfUrl ||
-  //     anyChant.files?.pdfURL ||
-  //     anyChant.document?.pdf ||
-  //     anyChant.document?.pdfUrl ||
-  //     anyChant.document?.pdfURL ||
-  //     anyChant.file?.pdf ||
-  //     anyChant.file?.url ||
-  //     anyChant.file?.path;
+    const nested =
+      anyChant.assets?.pdf ||
+      anyChant.assets?.pdfUrl ||
+      anyChant.assets?.pdfURL ||
+      anyChant.files?.pdf ||
+      anyChant.files?.pdfUrl ||
+      anyChant.files?.pdfURL ||
+      anyChant.document?.pdf ||
+      anyChant.document?.pdfUrl ||
+      anyChant.document?.pdfURL ||
+      anyChant.file?.pdf ||
+      anyChant.file?.url ||
+      anyChant.file?.path;
 
-  //   const fromArray = Array.isArray(anyChant.files)
-  //     ? (anyChant.files.find((f: any) => {
-  //         const url = f?.url || f?.path || f?.href;
-  //         const name = f?.name || f?.filename;
-  //         return (
-  //           (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-  //           (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-  //         );
-  //       })?.url ||
-  //         anyChant.files.find((f: any) => {
-  //           const url = f?.url || f?.path || f?.href;
-  //           const name = f?.name || f?.filename;
-  //           return (
-  //             (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-  //             (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-  //           );
-  //         })?.path ||
-  //         anyChant.files.find((f: any) => {
-  //           const url = f?.url || f?.path || f?.href;
-  //           const name = f?.name || f?.filename;
-  //           return (
-  //             (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
-  //             (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
-  //           );
-  //         })?.href)
-  //     : undefined;
+    const fromArray = Array.isArray(anyChant.files)
+      ? (anyChant.files.find((f: any) => {
+          const url = f?.url || f?.path || f?.href;
+          const name = f?.name || f?.filename;
+          return (
+            (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+            (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+          );
+        })?.url ||
+          anyChant.files.find((f: any) => {
+            const url = f?.url || f?.path || f?.href;
+            const name = f?.name || f?.filename;
+            return (
+              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+            );
+          })?.path ||
+          anyChant.files.find((f: any) => {
+            const url = f?.url || f?.path || f?.href;
+            const name = f?.name || f?.filename;
+            return (
+              (typeof url === 'string' && url.toLowerCase().includes('.pdf')) ||
+              (typeof name === 'string' && name.toLowerCase().endsWith('.pdf'))
+            );
+          })?.href)
+      : undefined;
 
-  //   const candidate = direct || nested || fromArray || '';
-  //   return typeof candidate === 'string' ? candidate : '';
-  // }, [chant]);
+    const candidate = direct || nested || fromArray || '';
+    return typeof candidate === 'string' ? candidate.trim() : '';
+  }, [chant]);
 
-  const pdfSource = `${import.meta.env.BASE_URL}chants/apolytikion-tone1.pdf`;
+  const [pdfSource, setPdfSource] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    const resolvePdfSource = async () => {
+      if (!pdfPath) {
+        if (isActive) setPdfSource('');
+        return;
+      }
+
+      if (
+        /^https?:\/\//i.test(pdfPath) ||
+        pdfPath.startsWith('blob:') ||
+        pdfPath.startsWith('data:')
+      ) {
+        if (isActive) setPdfSource(pdfPath);
+        return;
+      }
+
+      if (pdfPath.startsWith('/')) {
+        if (isActive) {
+          setPdfSource(`${import.meta.env.BASE_URL}${pdfPath.replace(/^\//, '')}`);
+        }
+        return;
+      }
+
+      if (pdfPath.toLowerCase().includes('.pdf')) {
+        const { data } = supabase.storage.from('chant-pdfs').getPublicUrl(pdfPath);
+        if (isActive) {
+          setPdfSource(data?.publicUrl || '');
+        }
+        return;
+      }
+
+      if (isActive) setPdfSource('');
+    };
+
+    void resolvePdfSource();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pdfPath]);
 
   const hasPdf = !!pdfSource;
 

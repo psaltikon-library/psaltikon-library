@@ -1,17 +1,43 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
-import { mockChants, filterOptions } from "../data/mockChants";
+import { supabase } from "../lib/supabase";
 import { Chant } from "../types";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
 }
 
+const buildFilterOptions = (chants: Chant[]) => {
+  const getUniqueValues = (values: Array<string | null | undefined>, allLabel: string) => {
+    const unique = Array.from(
+      new Set(
+        values
+          .map((value) => (typeof value === "string" ? value.trim() : ""))
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+    return [allLabel, ...unique];
+  };
+
+  return {
+    feasts: getUniqueValues(chants.map((chant) => chant.feast), "All Feasts"),
+    services: getUniqueValues(chants.map((chant) => chant.service), "All Services"),
+    parts: getUniqueValues(chants.map((chant) => chant.part), "All Parts"),
+    tones: getUniqueValues(chants.map((chant) => chant.tone), "All Tones"),
+    languages: getUniqueValues(chants.map((chant) => chant.language), "All Languages"),
+  };
+};
+
 const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+
+  const [chants, setChants] = useState<Chant[]>([]);
+  const [isLoadingChants, setIsLoadingChants] = useState(true);
+  const [chantsError, setChantsError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeast, setSelectedFeast] = useState("All Feasts");
@@ -22,13 +48,41 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem("psaltikon_admin_authed") === "true");
+
+    const loadChants = async () => {
+      setIsLoadingChants(true);
+      setChantsError("");
+
+      const { data, error } = await supabase
+        .from("chants")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setChants([]);
+        setChantsError(error.message || "Failed to load chants.");
+        setIsLoadingChants(false);
+        return;
+      }
+
+      setChants((data as Chant[]) || []);
+      setIsLoadingChants(false);
+    };
+
+    void loadChants();
   }, []);
 
-  const filteredChants = mockChants.filter((chant: Chant) => {
+  const filterOptions = useMemo(() => buildFilterOptions(chants), [chants]);
+
+  const filteredChants = chants.filter((chant: Chant) => {
+    const query = searchQuery.toLowerCase();
+    const englishTitle = (chant as any).english_title || (chant as any).englishTitle;
+    const greekTitle = (chant as any).titleGreek || (chant as any).title_greek;
+
     const matchesSearch =
-      chant.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (chant.titleGreek &&
-        chant.titleGreek.toLowerCase().includes(searchQuery.toLowerCase()));
+      chant.title.toLowerCase().includes(query) ||
+      (typeof englishTitle === "string" && englishTitle.toLowerCase().includes(query)) ||
+      (typeof greekTitle === "string" && greekTitle.toLowerCase().includes(query));
 
     const matchesFeast =
       selectedFeast === "All Feasts" || chant.feast === selectedFeast;
@@ -259,7 +313,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               </motion.h1>
 
               <p className="chants-count">
-                Showing {filteredChants.length} of {mockChants.length} chants
+                Showing {filteredChants.length} of {chants.length} chants
               </p>
 
               {isAdmin && (
@@ -283,8 +337,61 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
           </div>
 
           <AnimatePresence mode="wait">
-            {filteredChants.length > 0 ? (
+            {isLoadingChants ? (
               <motion.div
+                key="chants-loading"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  textAlign: "center",
+                  padding: "4rem 2rem",
+                  background: "var(--bg-surface)",
+                  borderRadius: "16px",
+                  border: "1px solid var(--border-light)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "2.5rem",
+                    marginBottom: "1rem",
+                    opacity: 0.35,
+                  }}
+                >
+                  ⏳
+                </div>
+                <h3 style={{ marginBottom: "0.5rem" }}>Loading chants...</h3>
+                <p style={{ color: "var(--text-muted)" }}>
+                  Pulling chant records from the library database.
+                </p>
+              </motion.div>
+            ) : chantsError ? (
+              <motion.div
+                key="chants-error"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  textAlign: "center",
+                  padding: "4rem 2rem",
+                  background: "var(--bg-surface)",
+                  borderRadius: "16px",
+                  border: "1px solid var(--border-light)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "2.5rem",
+                    marginBottom: "1rem",
+                    opacity: 0.35,
+                  }}
+                >
+                  ⚠️
+                </div>
+                <h3 style={{ marginBottom: "0.5rem" }}>Could not load chants</h3>
+                <p style={{ color: "var(--text-muted)" }}>{chantsError}</p>
+              </motion.div>
+            ) : filteredChants.length > 0 ? (
+              <motion.div
+                key="chants-grid"
                 className="chants-grid"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -301,6 +408,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               </motion.div>
             ) : (
               <motion.div
+                key="chants-empty"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{

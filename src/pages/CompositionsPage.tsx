@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import ChantCard from '../components/ChantCard';
-import { compositionsChants } from '../data/mockChants';
+import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
 
 interface CompositionsPageProps {
@@ -11,11 +11,40 @@ interface CompositionsPageProps {
 const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
+  const [compositionsChants, setCompositionsChants] = useState<Chant[]>([]);
+  const [isLoadingChants, setIsLoadingChants] = useState(true);
+  const [chantsError, setChantsError] = useState('');
+
   const categories = ['All', 'Divine Liturgy', 'Matins', 'Vespers'];
 
-  const filteredCompositions = selectedCategory === 'All' 
-    ? compositionsChants 
-    : compositionsChants.filter((c: Chant) => c.category === selectedCategory);
+  useEffect(() => {
+    const loadCompositionChants = async () => {
+      setIsLoadingChants(true);
+      setChantsError('');
+
+      const { data, error } = await supabase
+        .from('chants')
+        .select('*')
+        .in('service', ['Vespers', 'Matins', 'Divine Liturgy'])
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        setCompositionsChants([]);
+        setChantsError(error.message || 'Failed to load compositions chants.');
+        setIsLoadingChants(false);
+        return;
+      }
+
+      setCompositionsChants((data as Chant[]) || []);
+      setIsLoadingChants(false);
+    };
+
+    void loadCompositionChants();
+  }, []);
+
+  const filteredCompositions = selectedCategory === 'All'
+    ? compositionsChants
+    : compositionsChants.filter((c: Chant) => c.service === selectedCategory);
 
   return (
     <div style={{ paddingTop: '100px' }}>
@@ -81,16 +110,94 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
           </motion.div>
 
           {/* Compositions Grid */}
-          <div className="chants-grid">
-            {filteredCompositions.map((composition: Chant, index: number) => (
-              <ChantCard
-                key={composition.id}
-                chant={composition}
-                onView={onViewChant}
-                index={index}
-              />
-            ))}
-          </div>
+          {isLoadingChants ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '2.5rem',
+                  marginBottom: '1rem',
+                  opacity: 0.35,
+                }}
+              >
+                ⏳
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Loading compositions...</h3>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Pulling chants tagged for Vespers, Matins, and Divine Liturgy.
+              </p>
+            </motion.div>
+          ) : chantsError ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '2.5rem',
+                  marginBottom: '1rem',
+                  opacity: 0.35,
+                }}
+              >
+                ⚠️
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Could not load compositions</h3>
+              <p style={{ color: 'var(--text-muted)' }}>{chantsError}</p>
+            </motion.div>
+          ) : filteredCompositions.length > 0 ? (
+            <div className="chants-grid">
+              {filteredCompositions.map((composition: Chant, index: number) => (
+                <ChantCard
+                  key={composition.id}
+                  chant={composition}
+                  onView={onViewChant}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                textAlign: 'center',
+                padding: '4rem 2rem',
+                background: 'var(--bg-surface)',
+                borderRadius: '16px',
+                border: '1px solid var(--border-light)',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '3rem',
+                  marginBottom: '1rem',
+                  opacity: 0.3,
+                }}
+              >
+                🎼
+              </div>
+              <h3 style={{ marginBottom: '0.5rem' }}>No compositions found</h3>
+              <p style={{ color: 'var(--text-muted)' }}>
+                No chants matching the selected service tags were found.
+              </p>
+            </motion.div>
+          )}
 
           {/* Composer Info */}
           <motion.div
