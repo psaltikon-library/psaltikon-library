@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { mockChants, phoneticsChants, compositionsChants } from '../data/mockChants';
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
@@ -329,12 +328,70 @@ interface ChantDetailPageProps {
 }
 
 const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
-  const allChants = [...mockChants, ...phoneticsChants, ...compositionsChants];
-  const chant = allChants.find((c: Chant) => c.id === chantId);
+  const [chant, setChant] = useState<Chant | null>(null);
+  const [isLoadingChant, setIsLoadingChant] = useState(true);
+  const [chantError, setChantError] = useState('');
+
+  useEffect(() => {
+    const loadChant = async () => {
+      if (!chantId) {
+        setChant(null);
+        setChantError('No chant was selected.');
+        setIsLoadingChant(false);
+        return;
+      }
+
+      setIsLoadingChant(true);
+      setChantError('');
+
+      const { data, error } = await supabase
+        .from('chants')
+        .select('*')
+        .eq('id', chantId)
+        .maybeSingle();
+
+      if (error) {
+        setChant(null);
+        setChantError(error.message || 'Failed to load chant.');
+        setIsLoadingChant(false);
+        return;
+      }
+
+      if (!data) {
+        setChant(null);
+        setChantError('The requested chant could not be found.');
+        setIsLoadingChant(false);
+        return;
+      }
+
+      setChant(data as Chant);
+      setIsLoadingChant(false);
+    };
+
+    void loadChant();
+  }, [chantId]);
 
   const handleComingSoon = (action: string) => {
     alert(`${action} feature coming soon! This will be available in a future update.`);
   };
+
+  if (isLoadingChant) {
+    return (
+      <div className="detail-page">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', padding: '4rem' }}
+        >
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>⏳</div>
+          <h2>Loading chant...</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            Pulling chant details from the library database.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!chant) {
     return (
@@ -347,7 +404,7 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
           <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>📜</div>
           <h2>Chant not found</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            The requested chant could not be found.
+            {chantError || 'The requested chant could not be found.'}
           </p>
           <motion.button
             className="btn btn-primary"
@@ -783,7 +840,7 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
             gap: '1rem',
           }}
         >
-          {mockChants
+          {[]
             .filter((c: Chant) => c.id !== chant.id && (c.service === chant.service || c.tone === chant.tone))
             .slice(0, 3)
             .map((relatedChant: Chant, index: number) => (
