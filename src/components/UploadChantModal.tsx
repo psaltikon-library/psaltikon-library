@@ -108,6 +108,16 @@ export default function UploadChantModal({
       return;
     }
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      alert("You must be logged in to upload a chant.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const pdfPath = buildPdfPath(pdfFile, trimmedTitle);
@@ -135,6 +145,7 @@ export default function UploadChantModal({
       language: language || null,
       composer: null,
       pdf_path: pdfPath,
+      uploaded_by: user.id,
       has_phonetics: false,
       phonetics_text: null,
     };
