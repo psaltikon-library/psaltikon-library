@@ -492,52 +492,6 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
   const hasPdf = !!pdfSource;
 
-    if (isLoadingChant) {
-    return (
-      <div className="detail-page">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ textAlign: 'center', padding: '4rem' }}
-        >
-          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>⏳</div>
-          <h2>Loading chant...</h2>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            Pulling chant details from the library database.
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!hasChant) {
-    return (
-      <div className="detail-page">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ textAlign: 'center', padding: '4rem' }}
-        >
-          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>📜</div>
-          <h2>Chant not found</h2>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            {chantError || 'The requested chant could not be found.'}
-          </p>
-          <motion.button
-            className="btn btn-primary"
-            style={{ marginTop: '2rem' }}
-            onClick={onBack}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            ← Back to Library
-          </motion.button>
-        </motion.div>
-      </div>
-    );
-  }
-
-
   // PDF viewer state (so toolbar can live in the viewer header)
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfPage, setPdfPage] = useState<number>(1);
@@ -607,6 +561,51 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
       setPdfDownloading(false);
     }
   };
+
+  if (isLoadingChant) {
+    return (
+      <div className="detail-page">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', padding: '4rem' }}
+        >
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>⏳</div>
+          <h2>Loading chant...</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            Pulling chant details from the library database.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!hasChant) {
+    return (
+      <div className="detail-page">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', padding: '4rem' }}
+        >
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>📜</div>
+          <h2>Chant not found</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            {chantError || 'The requested chant could not be found.'}
+          </p>
+          <motion.button
+            className="btn btn-primary"
+            style={{ marginTop: '2rem' }}
+            onClick={onBack}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            ← Back to Library
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="detail-page">
