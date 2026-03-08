@@ -11,8 +11,6 @@ import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import { Page } from './types';
 
-const SESSION_PAGE_KEY = 'psaltikon_session_page';
-const SESSION_CHANT_KEY = 'psaltikon_session_chant';
 
 const validPages: Page[] = [
   'home',
@@ -29,22 +27,14 @@ const isValidPage = (value: string | null): value is Page => {
 };
 
 const getRouteState = (): { page: Page; chantId: string | null } => {
-  const state = window.history.state as { page?: Page; chantId?: string | null } | null;
+  const params = new URLSearchParams(window.location.search);
+  const urlPage = params.get('page');
+  const urlChantId = params.get('chantId');
 
-  if (state?.page && isValidPage(state.page)) {
+  if (isValidPage(urlPage)) {
     return {
-      page: state.page,
-      chantId: state.page === 'chant-detail' ? state.chantId ?? null : null,
-    };
-  }
-
-  const savedPage = sessionStorage.getItem(SESSION_PAGE_KEY);
-  const savedChantId = sessionStorage.getItem(SESSION_CHANT_KEY);
-
-  if (isValidPage(savedPage)) {
-    return {
-      page: savedPage,
-      chantId: savedPage === 'chant-detail' ? savedChantId : null,
+      page: urlPage,
+      chantId: urlPage === 'chant-detail' ? urlChantId : null,
     };
   }
 
@@ -59,33 +49,33 @@ const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
   }, [onComplete]);
 
   return (
-    <motion.div
+    <motion.div 
       className="loading-screen"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
     >
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: 'backOut' }}
+        transition={{ duration: 0.6, ease: "backOut" }}
       >
         <motion.div
           className="loading-cross"
-          animate={{
+          animate={{ 
             scale: [1, 1.1, 1],
-            opacity: [1, 0.7, 1],
+            opacity: [1, 0.7, 1]
           }}
-          transition={{
-            duration: 1.5,
+          transition={{ 
+            duration: 1.5, 
             repeat: Infinity,
-            ease: 'easeInOut',
+            ease: "easeInOut"
           }}
         >
           ☦
         </motion.div>
       </motion.div>
-      <motion.p
+      <motion.p 
         className="loading-text"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -100,7 +90,7 @@ const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
           background: 'var(--border)',
           borderRadius: 2,
           marginTop: 24,
-          overflow: 'hidden',
+          overflow: 'hidden'
         }}
       >
         <motion.div
@@ -108,11 +98,11 @@ const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
             width: '100%',
             height: '100%',
             background: 'var(--burgundy)',
-            transformOrigin: 'left',
+            transformOrigin: 'left'
           }}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 1.8, ease: 'easeOut' }}
+          transition={{ duration: 1.8, ease: "easeOut" }}
         />
       </motion.div>
     </motion.div>
@@ -130,7 +120,7 @@ const pageVariants = {
     y: 0,
     transition: {
       duration: 0.6,
-      ease: 'easeOut' as const,
+      ease: "easeOut" as const,
     },
   },
   exit: {
@@ -138,7 +128,7 @@ const pageVariants = {
     y: -20,
     transition: {
       duration: 0.4,
-      ease: 'easeOut' as const,
+      ease: "easeOut" as const,
     },
   },
 };
@@ -150,15 +140,16 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    if (window.location.search) {
-      window.history.replaceState(window.history.state, '', window.location.pathname);
-    }
-  }, []);
-
   const syncRoute = useCallback(
     (page: Page, chantId: string | null, mode: 'push' | 'replace' = 'push') => {
-      const nextUrl = window.location.pathname;
+      const params = new URLSearchParams();
+      params.set('page', page);
+
+      if (page === 'chant-detail' && chantId) {
+        params.set('chantId', chantId);
+      }
+
+      const nextUrl = `${window.location.pathname}?${params.toString()}`;
 
       if (mode === 'replace') {
         window.history.replaceState({ page, chantId }, '', nextUrl);
@@ -166,13 +157,6 @@ function App() {
         window.history.pushState({ page, chantId }, '', nextUrl);
       }
 
-      sessionStorage.setItem(SESSION_PAGE_KEY, page);
-
-      if (page === 'chant-detail' && chantId) {
-        sessionStorage.setItem(SESSION_CHANT_KEY, chantId);
-      } else {
-        sessionStorage.removeItem(SESSION_CHANT_KEY);
-      }
     },
     []
   );
@@ -221,19 +205,45 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={navigateTo} onViewChant={navigateToChant} />;
+        return (
+          <HomePage 
+            onNavigate={navigateTo} 
+            onViewChant={navigateToChant}
+          />
+        );
       case 'library':
-        return <LibraryPage onViewChant={navigateToChant} />;
+        return (
+          <LibraryPage 
+            onViewChant={navigateToChant}
+          />
+        );
       case 'chant-detail':
-        return <ChantDetailPage chantId={selectedChantId} onBack={() => navigateTo('library')} />;
+        return (
+          <ChantDetailPage 
+            chantId={selectedChantId}
+            onBack={() => navigateTo('library')}
+          />
+        );
       case 'phonetics':
-        return <PhoneticsPage onViewChant={navigateToChant} />;
+        return (
+          <PhoneticsPage 
+            onViewChant={navigateToChant}
+          />
+        );
       case 'compositions':
-        return <CompositionsPage onViewChant={navigateToChant} />;
+        return (
+          <CompositionsPage 
+            onViewChant={navigateToChant}
+          />
+        );
       case 'about':
         return <AboutPage onNavigate={navigateTo} />;
       case 'admin':
-        return <AdminPage onNavigate={navigateTo} />;
+        return (
+          <AdminPage
+            onNavigate={navigateTo}
+          />
+        );
       default:
         return <HomePage onNavigate={navigateTo} onViewChant={navigateToChant} />;
     }
@@ -244,9 +254,18 @@ function App() {
       {isLoading ? (
         <LoadingScreen key="loading" onComplete={() => setIsLoading(false)} />
       ) : (
-        <motion.div className="app" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-          <Header currentPage={currentPage} onNavigate={navigateTo} isScrolled={isScrolled} />
-
+        <motion.div 
+          className="app"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Header 
+            currentPage={currentPage} 
+            onNavigate={navigateTo}
+            isScrolled={isScrolled}
+          />
+          
           <AnimatePresence mode="wait">
             <motion.main
               key={currentPage}
@@ -259,7 +278,7 @@ function App() {
               {renderPage()}
             </motion.main>
           </AnimatePresence>
-
+          
           <Footer onNavigate={navigateTo} />
         </motion.div>
       )}
