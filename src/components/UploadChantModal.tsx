@@ -5,11 +5,15 @@ import { supabase } from "../lib/supabase";
 type UploadChantModalProps = {
   open: boolean;
   onClose: () => void;
+  initialChant?: any | null;
+  onSaved?: (chant: any) => void;
 };
 
 export default function UploadChantModal({
   open,
   onClose,
+  initialChant = null,
+  onSaved,
 }: UploadChantModalProps) {
   const [title, setTitle] = useState("");
   const [feast, setFeast] = useState("");
@@ -22,13 +26,15 @@ export default function UploadChantModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const isEditing = !!initialChant?.id;
+
   const resetForm = () => {
-    setTitle("");
-    setFeast("");
-    setService("");
-    setPart("");
-    setTone("");
-    setLanguage("");
+    setTitle(initialChant?.title || "");
+    setFeast(initialChant?.feast || "");
+    setService(initialChant?.service || "");
+    setPart(initialChant?.part || "");
+    setTone(initialChant?.tone || "");
+    setLanguage(initialChant?.language || "");
     setPdfFile(null);
     setIsSubmitting(false);
   };
@@ -84,6 +90,11 @@ export default function UploadChantModal({
 
   useEffect(() => {
     if (!open) return;
+    resetForm();
+  }, [open, initialChant]);
+
+  useEffect(() => {
+    if (!open) return;
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -103,62 +114,114 @@ export default function UploadChantModal({
       return;
     }
 
-    if (!pdfFile) {
-      alert("Please upload a PDF file.");
-      return;
-    }
-
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      alert("You must be logged in to upload a chant.");
+      alert("You must be logged in to manage a chant.");
+      return;
+    }
+
+    if (!isEditing && !pdfFile) {
+      alert("Please upload a PDF file.");
       return;
     }
 
     setIsSubmitting(true);
 
-    const pdfPath = buildPdfPath(pdfFile, trimmedTitle);
+    let pdfPath = initialChant?.pdf_path || null;
+    let newlyUploadedPath: string | null = null;
 
-    const { error: uploadError } = await supabase.storage
-      .from("chant-pdfs")
-      .upload(pdfPath, pdfFile, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
+    if (pdfFile) {
+      pdfPath = buildPdfPath(pdfFile, trimmedTitle);
+      newlyUploadedPath = pdfPath;
 
-    if (uploadError) {
-      setIsSubmitting(false);
-      alert(uploadError.message || "Failed to upload PDF.");
-      return;
+      const { error: uploadError } = await supabase.storage
+        .from("chant-pdfs")
+        .upload(pdfPath, pdfFile, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setIsSubmitting(false);
+        alert(uploadError.message || "Failed to upload PDF.");
+        return;
+      }
     }
 
     const payload = {
       title: trimmedTitle,
-      english_title: null,
+      english_title: initialChant?.english_title || null,
       tone: tone || null,
       feast: feast || null,
       service: service || null,
       part: part || null,
       language: language || null,
-      composer: null,
+      composer: initialChant?.composer || null,
       pdf_path: pdfPath,
-      uploaded_by: user.id,
-      has_phonetics: false,
-      phonetics_text: null,
+      uploaded_by: initialChant?.uploaded_by || user.id,
+      has_phonetics: initialChant?.has_phonetics || false,
+      phonetics_text: initialChant?.phonetics_text || null,
+      status: initialChant?.status || "pending",
     };
 
-    const { error: insertError } = await supabase.from("chants").insert(payload);
+    if (!payload.pdf_path) {
+      setIsSubmitting(false);
+      alert("Please upload a PDF file.");
+      return;
+    }
+
+    if (isEditing) {
+      const { data, error } = await supabase
+        .from("chants")
+        .update(payload)
+        .eq("id", initialChant.id)
+        .select("*")
+        .single();
+
+      if (error) {
+        if (newlyUploadedPath) {
+          await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
+        }
+        setIsSubmitting(false);
+        alert(error.message || "Failed to update chant.");
+        return;
+      }
+
+      if (
+        newlyUploadedPath &&
+        initialChant?.pdf_path &&
+        initialChant.pdf_path !== newlyUploadedPath
+      ) {
+        await supabase.storage.from("chant-pdfs").remove([initialChant.pdf_path]);
+      }
+
+      onSaved?.(data);
+      alert("Chant updated successfully.");
+      resetForm();
+      onClose();
+      return;
+    }
+
+    const { data, error: insertError } = await supabase
+      .from("chants")
+      .insert(payload)
+      .select("*")
+      .single();
 
     if (insertError) {
-      await supabase.storage.from("chant-pdfs").remove([pdfPath]);
+      if (newlyUploadedPath) {
+        await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
+      }
       setIsSubmitting(false);
       alert(insertError.message || "Failed to save chant data.");
       return;
     }
 
+    onSaved?.(data);
     alert("Chant uploaded successfully.");
     resetForm();
     onClose();
@@ -192,9 +255,11 @@ export default function UploadChantModal({
                 <div className="auth-modal-icon">☦</div>
                 <div>
                   <div className="auth-modal-app">Psaltikon Admin</div>
-                  <div className="auth-modal-title">Upload a Chant</div>
+                  <div className="auth-modal-title">{isEditing ? "Edit Chant" : "Upload a Chant"}</div>
                   <div className="auth-modal-subtitle">
-                    Add chant metadata and upload its PDF.
+                    {isEditing
+                      ? "Update chant metadata and optionally replace its PDF."
+                      : "Add chant metadata and upload its PDF."}
                   </div>
                 </div>
               </div>
@@ -310,7 +375,7 @@ export default function UploadChantModal({
                 </div>
 
                 <div className="auth-field upload-chant-form__upload-field">
-                  <label className="auth-label">Upload PDF *</label>
+                  <label className="auth-label">{isEditing ? "Replace PDF" : "Upload PDF *"}</label>
                   <div
                     className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${pdfFile ? " has-file" : ""}`}
                     onDragOver={handleDragOver}
@@ -336,12 +401,18 @@ export default function UploadChantModal({
 
                     <div className="upload-dropzone__icon">⇪</div>
                     <div className="upload-dropzone__title">
-                      {pdfFile ? pdfFile.name : "Drag & drop a PDF here"}
+                      {pdfFile
+                        ? pdfFile.name
+                        : isEditing
+                          ? "Drag & drop a new PDF here"
+                          : "Drag & drop a PDF here"}
                     </div>
                     <div className="upload-dropzone__subtitle">
                       {pdfFile
                         ? "PDF selected. Click to replace it."
-                        : "or click to browse your files"}
+                        : isEditing
+                          ? "Leave empty to keep the current PDF, or click to browse your files"
+                          : "or click to browse your files"}
                     </div>
                   </div>
                 </div>
@@ -352,7 +423,13 @@ export default function UploadChantModal({
                 className="auth-submit upload-chant-form__submit"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Uploading..." : "Upload Chant"}
+                {isSubmitting
+                  ? isEditing
+                    ? "Updating..."
+                    : "Uploading..."
+                  : isEditing
+                    ? "Update Chant"
+                    : "Upload Chant"}
               </button>
             </form>
           </motion.div>

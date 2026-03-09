@@ -34,6 +34,17 @@ const buildFilterOptions = (chants: Chant[]) => {
 const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editingChant, setEditingChant] = useState<Chant | null>(null);
+  const handleOpenUploadModal = () => {
+    setEditingChant(null);
+    setUploadModalOpen(true);
+  };
+
+  const handleEditChant = (chantId: string) => {
+    const chantToEdit = chants.find((chant) => chant.id === chantId) || null;
+    setEditingChant(chantToEdit);
+    setUploadModalOpen(true);
+  };
   const [isApprovingAll, setIsApprovingAll] = useState(false);
 
   const [chants, setChants] = useState<Chant[]>([]);
@@ -363,7 +374,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                 >
                   <motion.button
                     className="btn btn-primary"
-                    onClick={() => setUploadModalOpen(true)}
+                    onClick={handleOpenUploadModal}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
@@ -450,6 +461,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     key={chant.id}
                     chant={chant}
                     onView={onViewChant}
+                    onEdit={handleEditChant}
                     index={index}
                   />
                 ))}
@@ -497,7 +509,20 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
 
       <UploadChantModal
         open={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
+        initialChant={editingChant}
+        onClose={() => {
+          setUploadModalOpen(false);
+          setEditingChant(null);
+        }}
+        onSaved={(savedChant) => {
+          setChants((current) => {
+            const exists = current.some((chant) => chant.id === savedChant.id);
+            if (exists) {
+              return current.map((chant) => (chant.id === savedChant.id ? savedChant : chant));
+            }
+            return [savedChant, ...current];
+          });
+        }}
       />
     </>
   );
