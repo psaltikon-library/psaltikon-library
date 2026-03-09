@@ -256,7 +256,10 @@ function App() {
           />
         );
       case 'about':
-        return <AboutPage onNavigate={navigateTo} />;
+        return (
+          <AboutPage />
+        );
+
       case 'admin':
         return (
           <AdminPage

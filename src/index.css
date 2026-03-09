@@ -1878,14 +1878,14 @@ a:hover {
 
 .about-hero {
   text-align: center;
-  padding: calc(100px + var(--space-4xl)) var(--space-xl) var(--space-4xl);
+  padding: calc(100px + var(--space-4xl)) var(--space-xl) calc(var(--space-4xl) + var(--space-xl));
   background: linear-gradient(to bottom, var(--bg-primary), var(--bg-secondary));
 }
 
 .about-content {
   max-width: 800px;
   margin: 0 auto;
-  padding: 0 var(--space-xl) var(--space-4xl);
+  padding: var(--space-xl) var(--space-xl) var(--space-4xl);
 }
 
 .about-section {
@@ -2236,11 +2236,11 @@ a:hover {
   }
   
   .about-hero {
-    padding: calc(80px + var(--space-2xl)) var(--space-md) var(--space-2xl);
+    padding: calc(80px + var(--space-2xl)) var(--space-md) calc(var(--space-2xl) + var(--space-lg));
   }
   
   .about-content {
-    padding: 0 var(--space-md) var(--space-2xl);
+    padding: var(--space-lg) var(--space-md) var(--space-2xl);
   }
   
   .quote-text {
