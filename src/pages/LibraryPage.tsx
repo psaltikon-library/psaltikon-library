@@ -34,6 +34,7 @@ const buildFilterOptions = (chants: Chant[]) => {
 const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
 
   const [chants, setChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
@@ -112,6 +113,38 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
     setSelectedTone("All Tones");
     setSelectedLanguage("All Languages");
     setSearchQuery("");
+  };
+
+  const handleApproveAll = async () => {
+    const confirmed = window.confirm(
+      "Approve all chants? This will mark every chant in the library as approved."
+    );
+
+    if (!confirmed) return;
+
+    setIsApprovingAll(true);
+
+    const { data, error } = await supabase
+      .from("chants")
+      .update({ status: "approved" })
+      .neq("status", "approved")
+      .select("*");
+
+    if (error) {
+      setIsApprovingAll(false);
+      alert(error.message || "Failed to approve chants.");
+      return;
+    }
+
+    setChants((current) => {
+      if (!data || !data.length) return current;
+
+      const approvedMap = new Map((data as Chant[]).map((chant) => [chant.id, chant]));
+      return current.map((chant) => approvedMap.get(chant.id) || chant);
+    });
+
+    setIsApprovingAll(false);
+    alert("All pending chants have been approved.");
   };
 
   return (
@@ -318,7 +351,12 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
 
               {isAdmin && (
                 <motion.div
-                  style={{ marginTop: "1rem" }}
+                  style={{
+                    marginTop: "1rem",
+                    display: "flex",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                  }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
@@ -330,6 +368,16 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     whileTap={{ scale: 0.97 }}
                   >
                     Upload a Chant
+                  </motion.button>
+
+                  <motion.button
+                    className="btn btn-secondary"
+                    onClick={() => void handleApproveAll()}
+                    disabled={isApprovingAll}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {isApprovingAll ? "Approving..." : "Approve All"}
                   </motion.button>
                 </motion.div>
               )}
