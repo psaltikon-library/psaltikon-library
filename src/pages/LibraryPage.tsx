@@ -46,6 +46,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
     setUploadModalOpen(true);
   };
   const [isApprovingAll, setIsApprovingAll] = useState(false);
+  const [isHidingAll, setIsHidingAll] = useState(false);
 
   const [chants, setChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
@@ -156,6 +157,38 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
 
     setIsApprovingAll(false);
     alert("All pending chants have been approved.");
+  };
+
+  const handleHideAll = async () => {
+    const confirmed = window.confirm(
+      "Hide all chants? This will mark every chant in the library as hidden."
+    );
+
+    if (!confirmed) return;
+
+    setIsHidingAll(true);
+
+    const { data, error } = await supabase
+      .from("chants")
+      .update({ status: "hidden" })
+      .neq("status", "hidden")
+      .select("*");
+
+    if (error) {
+      setIsHidingAll(false);
+      alert(error.message || "Failed to hide chants.");
+      return;
+    }
+
+    setChants((current) => {
+      if (!data || !data.length) return current;
+
+      const hiddenMap = new Map((data as Chant[]).map((chant) => [chant.id, chant]));
+      return current.map((chant) => hiddenMap.get(chant.id) || chant);
+    });
+
+    setIsHidingAll(false);
+    alert("All chants have been hidden.");
   };
 
   return (
@@ -389,6 +422,15 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     whileTap={{ scale: 0.97 }}
                   >
                     {isApprovingAll ? "Approving..." : "Approve All"}
+                  </motion.button>
+                  <motion.button
+                    className="btn btn-secondary"
+                    onClick={() => void handleHideAll()}
+                    disabled={isHidingAll}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {isHidingAll ? "Hiding..." : "Hide All"}
                   </motion.button>
                 </motion.div>
               )}

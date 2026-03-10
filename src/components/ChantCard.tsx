@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Chant } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface ChantCardProps {
   chant: Chant;
@@ -93,24 +94,40 @@ const getMartyriaForTone = (tone?: string | null) => {
 
 const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [status, setStatus] = useState(((chant as any).status || 'pending').toString().toLowerCase());
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('psaltikon_admin_authed') === 'true');
   }, []);
 
+  useEffect(() => {
+    setStatus(((chant as any).status || 'pending').toString().toLowerCase());
+  }, [chant]);
+
   const handleComingSoon = (action: string) => {
     alert(`${action} feature coming soon! This will be available in a future update.`);
   };
 
-  const chantStatus = ((chant as any).status || 'pending').toString();
-  const normalizedStatus = chantStatus.toLowerCase();
-
-  const statusBadgeClass =
-    normalizedStatus === 'approved'
-      ? 'badge badge-gold'
-      : normalizedStatus === 'rejected'
-        ? 'badge badge-burgundy'
-        : 'badge badge-purple';
+  const chantStatus = status;
+  const statusBubbleStyles =
+    chantStatus === 'approved'
+      ? {
+          background: 'rgba(34, 197, 94, 0.12)',
+          border: '1px solid rgba(34, 197, 94, 0.28)',
+          color: '#16a34a',
+        }
+      : chantStatus === 'hidden'
+        ? {
+            background: 'rgba(107, 70, 193, 0.12)',
+            border: '1px solid rgba(107, 70, 193, 0.22)',
+            color: 'var(--purple)',
+          }
+        : {
+            background: 'rgba(107, 114, 128, 0.12)',
+            border: '1px solid rgba(107, 114, 128, 0.22)',
+            color: '#6b7280',
+          };
 
   const handleEditClick = () => {
     if (onEdit) {
@@ -119,6 +136,26 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
     }
 
     alert('Edit chant feature coming soon! This will be available in a future update.');
+  };
+
+  const handleStatusChange = async (nextStatus: string) => {
+    if (nextStatus === status) return;
+
+    const previousStatus = status;
+    setStatus(nextStatus);
+    setIsUpdatingStatus(true);
+
+    const { error } = await supabase
+      .from('chants')
+      .update({ status: nextStatus })
+      .eq('id', chant.id);
+
+    if (error) {
+      setStatus(previousStatus);
+      alert(error.message || 'Failed to update chant status.');
+    }
+
+    setIsUpdatingStatus(false);
   };
 
   const martyriaSymbol = getMartyriaForTone(chant.tone);
@@ -169,9 +206,52 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
             </motion.div>
           </div>
           {isAdmin && (
-            <div style={{ marginTop: '0.45rem' }}>
-              <span className={statusBadgeClass} style={{ textTransform: 'capitalize' }}>
-                {chantStatus}
+            <div
+              style={{
+                marginTop: '0.45rem',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              <select
+                value={chantStatus}
+                disabled={isUpdatingStatus}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  void handleStatusChange(e.target.value);
+                }}
+                style={{
+                  ...statusBubbleStyles,
+                  textTransform: 'capitalize',
+                  borderRadius: '999px',
+                  padding: '0.35rem 2rem 0.35rem 0.8rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: isUpdatingStatus ? 'wait' : 'pointer',
+                  outline: 'none',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  lineHeight: 1.2,
+                }}
+              >
+                <option value="pending">pending</option>
+                <option value="approved">approved</option>
+                <option value="hidden">hidden</option>
+              </select>
+              <span
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  pointerEvents: 'none',
+                  color: 'currentColor',
+                  fontSize: '0.7rem',
+                  opacity: 0.8,
+                }}
+              >
+                ▾
               </span>
             </div>
           )}
