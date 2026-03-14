@@ -22,7 +22,9 @@ export default function UploadChantModal({
   const [tone, setTone] = useState("");
   const [language, setLanguage] = useState("");
   const [hasPhonetics, setHasPhonetics] = useState(false);
-  const [phoneticsPdfFile, setPhoneticsPdfFile] = useState<File | null>(null);
+  const [phoneticsTextFile, setPhoneticsTextFile] = useState<File | null>(null);
+  const [phoneticsTextInput, setPhoneticsTextInput] = useState("");
+  const [useTypedPhoneticsText, setUseTypedPhoneticsText] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,7 +48,9 @@ export default function UploadChantModal({
       initialLanguage === "Arabic Phonetics" ||
       initialLanguage === "Greek Phonetics"
     );
-    setPhoneticsPdfFile(null);
+    setPhoneticsTextFile(null);
+    setPhoneticsTextInput("");
+    setUseTypedPhoneticsText(false);
     setPdfFile(null);
     setIsSubmitting(false);
   };
@@ -77,15 +81,21 @@ export default function UploadChantModal({
     setPdfFile(file);
   };
 
-  const applyPhoneticsPdfFile = (file: File | null) => {
+  const applyPhoneticsTextFile = (file: File | null) => {
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
-      alert("Please upload a PDF file only.");
+    const isTextFile =
+      file.type === "text/plain" ||
+      file.name.toLowerCase().endsWith(".txt");
+
+    if (!isTextFile) {
+      alert("Please upload a text (.txt) file only.");
       return;
     }
 
-    setPhoneticsPdfFile(file);
+    setPhoneticsTextFile(file);
+    setUseTypedPhoneticsText(false);
+    setPhoneticsTextInput("");
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -110,7 +120,7 @@ export default function UploadChantModal({
 
   const handlePhoneticsDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    applyPhoneticsPdfFile(e.dataTransfer.files?.[0] || null);
+    applyPhoneticsTextFile(e.dataTransfer.files?.[0] || null);
   };
 
   useEffect(() => {
@@ -132,7 +142,9 @@ export default function UploadChantModal({
     }
 
     setHasPhonetics(false);
-    setPhoneticsPdfFile(null);
+    setPhoneticsTextFile(null);
+    setPhoneticsTextInput("");
+    setUseTypedPhoneticsText(false);
   }, [languageRequiresPhonetics]);
 
   useEffect(() => {
@@ -167,16 +179,21 @@ export default function UploadChantModal({
       return;
     }
 
-    let phoneticsText: string | null = initialChant?.phonetics_text || null;
-    let phoneticsPdfPath: string | null = initialChant?.phonetics_text || null;
+    let phoneticsStoragePath: string | null = initialChant?.phonetics_text || null;
 
     if (!isEditing && !pdfFile) {
       alert("Please upload a PDF file.");
       return;
     }
 
-    if ((hasPhonetics || languageRequiresPhonetics) && !isEditing && !phoneticsPdfFile) {
-      alert("Please upload a phonetics PDF file.");
+    const hasTypedPhoneticsText = useTypedPhoneticsText && phoneticsTextInput.trim().length > 0;
+
+    if ((hasPhonetics || languageRequiresPhonetics) &&
+      !isEditing &&
+      !phoneticsTextFile &&
+      !hasTypedPhoneticsText
+    ) {
+      alert("Please upload a phonetics text file or enter phonetics text.");
       return;
     }
 
@@ -203,15 +220,22 @@ export default function UploadChantModal({
         return;
       }
     }
+    if ((hasPhonetics || languageRequiresPhonetics) && (phoneticsTextFile || hasTypedPhoneticsText)) {
+      const phoneticsFileName = phoneticsTextFile
+        ? phoneticsTextFile.name
+        : `${trimmedTitle || "chant"}-phonetics.txt`;
 
-    if ((hasPhonetics || languageRequiresPhonetics) && phoneticsPdfFile) {
-      phoneticsPdfPath = buildPdfPath(phoneticsPdfFile, `${trimmedTitle}-phonetics`);
-      newlyUploadedPhoneticsPath = phoneticsPdfPath;
+      const phoneticsFileToUpload = phoneticsTextFile
+        ? phoneticsTextFile
+        : new File([phoneticsTextInput], phoneticsFileName, { type: "text/plain" });
+
+      phoneticsStoragePath = buildPdfPath(phoneticsFileToUpload, `${trimmedTitle}-phonetics`);
+      newlyUploadedPhoneticsPath = phoneticsStoragePath;
 
       const { error: phoneticsUploadError } = await supabase.storage
         .from("phonetic_files")
-        .upload(phoneticsPdfPath, phoneticsPdfFile, {
-          contentType: "application/pdf",
+        .upload(phoneticsStoragePath, phoneticsFileToUpload, {
+          contentType: "text/plain",
           upsert: false,
         });
 
@@ -220,7 +244,7 @@ export default function UploadChantModal({
           await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
         }
         setIsSubmitting(false);
-        alert(phoneticsUploadError.message || "Failed to upload phonetics PDF.");
+        alert(phoneticsUploadError.message || "Failed to upload phonetics text file.");
         return;
       }
     }
@@ -239,7 +263,7 @@ export default function UploadChantModal({
       has_phonetics: hasPhonetics || languageRequiresPhonetics,
       phonetics_text:
         hasPhonetics || languageRequiresPhonetics
-          ? phoneticsPdfPath
+          ? phoneticsStoragePath
           : initialChant?.phonetics_text || null,
       status: initialChant?.status || "pending",
     };
@@ -252,7 +276,7 @@ export default function UploadChantModal({
 
     if ((hasPhonetics || languageRequiresPhonetics) && !payload.phonetics_text) {
       setIsSubmitting(false);
-      alert("Please upload a phonetics PDF file.");
+      alert("Please upload a phonetics text file.");
       return;
     }
 
@@ -295,7 +319,9 @@ export default function UploadChantModal({
       onSaved?.(data);
       setIsSubmitting(false);
       setPdfFile(null);
-      setPhoneticsPdfFile(null);
+      setPhoneticsTextFile(null);
+      setPhoneticsTextInput("");
+      setUseTypedPhoneticsText(false);
       onClose();
       return;
     }
@@ -321,7 +347,9 @@ export default function UploadChantModal({
     onSaved?.(data);
     setIsSubmitting(false);
     setPdfFile(null);
-    setPhoneticsPdfFile(null);
+    setPhoneticsTextFile(null);
+    setPhoneticsTextInput("");
+    setUseTypedPhoneticsText(false);
     onClose();
   };
 
@@ -542,45 +570,97 @@ export default function UploadChantModal({
 
                   {(hasPhonetics || languageRequiresPhonetics) && (
                     <div className="auth-field">
-                      <label className="auth-label">{isEditing ? "Replace Phonetics PDF" : "Upload Phonetics PDF *"}</label>
+                      <label className="auth-label">{isEditing ? "Replace Phonetics Text File" : "Upload Phonetics Text File *"}</label>
                       <div
-                        className={`upload-dropzone${phoneticsPdfFile ? " has-file" : ""}`}
-                        onDragOver={handlePhoneticsDragOver}
-                        onDrop={handlePhoneticsDrop}
-                        onClick={() => phoneticsFileInputRef.current?.click()}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            phoneticsFileInputRef.current?.click();
-                          }
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          marginBottom: '0.65rem',
                         }}
                       >
-                        <input
-                          ref={phoneticsFileInputRef}
-                          className="upload-dropzone__input"
-                          type="file"
-                          accept="application/pdf"
-                          onChange={(e) => applyPhoneticsPdfFile(e.target.files?.[0] || null)}
-                        />
-
-                        <div className="upload-dropzone__icon">⇪</div>
-                        <div className="upload-dropzone__title">
-                          {phoneticsPdfFile
-                            ? phoneticsPdfFile.name
-                            : isEditing
-                              ? "Drag & drop a new phonetics PDF here"
-                              : "Drag & drop a phonetics PDF here"}
-                        </div>
-                        <div className="upload-dropzone__subtitle">
-                          {phoneticsPdfFile
-                            ? "Phonetics PDF selected. Click to replace it."
-                            : isEditing
-                              ? "Leave empty to keep the current phonetics PDF, or click to browse your files"
-                              : "or click to browse your files"}
-                        </div>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          Upload a .txt file or type the phonetics below
+                        </span>
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            fontSize: '0.85rem',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={useTypedPhoneticsText}
+                            onChange={(e) => {
+                              setUseTypedPhoneticsText(e.target.checked);
+                              if (e.target.checked) {
+                                setPhoneticsTextFile(null);
+                              } else {
+                                setPhoneticsTextInput("");
+                              }
+                            }}
+                          />
+                          Type instead
+                        </label>
                       </div>
+                      {useTypedPhoneticsText ? (
+                        <textarea
+                          className="auth-input"
+                          value={phoneticsTextInput}
+                          onChange={(e) => setPhoneticsTextInput(e.target.value)}
+                          placeholder="Type or paste the phonetics text here"
+                          rows={10}
+                          style={{
+                            resize: 'vertical',
+                            minHeight: '220px',
+                            lineHeight: 1.5,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className={`upload-dropzone${phoneticsTextFile ? " has-file" : ""}`}
+                          onDragOver={handlePhoneticsDragOver}
+                          onDrop={handlePhoneticsDrop}
+                          onClick={() => phoneticsFileInputRef.current?.click()}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              phoneticsFileInputRef.current?.click();
+                            }
+                          }}
+                        >
+                          <input
+                            ref={phoneticsFileInputRef}
+                            className="upload-dropzone__input"
+                            type="file"
+                            accept=".txt,text/plain"
+                            onChange={(e) => applyPhoneticsTextFile(e.target.files?.[0] || null)}
+                          />
+
+                          <div className="upload-dropzone__icon">⇪</div>
+                          <div className="upload-dropzone__title">
+                            {phoneticsTextFile
+                              ? phoneticsTextFile.name
+                              : isEditing
+                                ? "Drag & drop a new phonetics text file here"
+                                : "Drag & drop a phonetics text file here"}
+                          </div>
+                          <div className="upload-dropzone__subtitle">
+                            {phoneticsTextFile
+                              ? "Phonetics text file selected. Click to replace it."
+                              : isEditing
+                                ? "Leave empty to keep the current phonetics text, or click to browse your files"
+                                : "or click to browse for a .txt file"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
