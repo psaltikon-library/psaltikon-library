@@ -7,6 +7,7 @@ interface ChantCardProps {
   chant: Chant;
   onView: (id: string) => void;
   onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
   index?: number;
 }
 
@@ -92,10 +93,12 @@ const getMartyriaForTone = (tone?: string | null) => {
   return '𝄞';
 };
 
-const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
+const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState(((chant as any).status || 'pending').toString().toLowerCase());
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('psaltikon_admin_authed') === 'true');
@@ -135,7 +138,26 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
       return;
     }
 
-    alert('Edit chant feature coming soon! This will be available in a future update.');
+    alert('Edit feature not available at the moment...');
+  };
+
+  const handleDeleteClick = async () => {
+    setIsDeleting(true);
+
+    const { error } = await supabase
+      .from('chants')
+      .delete()
+      .eq('id', chant.id);
+
+    if (error) {
+      setIsDeleting(false);
+      alert(error.message || 'Failed to delete chant.');
+      return;
+    }
+
+    onDelete?.(chant.id);
+    setIsDeleting(false);
+    setShowDeleteConfirm(false);
   };
 
   const handleStatusChange = async (nextStatus: string) => {
@@ -266,10 +288,10 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
           {chant.tone}
         </span>
         <span className="badge badge-gold">
-          {chant.service}
+          {chant.part}
         </span>
         <span className="badge badge-outline">
-          {chant.part}
+          {chant.service}
         </span>
         {chant.hasPhonetics && (
           <span className="badge badge-purple">
@@ -324,6 +346,20 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
             Edit
           </motion.button>
         )}
+        {isAdmin && (
+          <motion.button
+            className="btn btn-secondary btn-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(true);
+            }}
+            disabled={isDeleting}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </motion.button>
+        )}
         <motion.button
           className="btn btn-ghost btn-sm"
           onClick={(e) => {
@@ -337,6 +373,135 @@ const ChantCard = ({ chant, onView, onEdit, index = 0 }: ChantCardProps) => {
           + Booklet
         </motion.button>
       </div>
+      {showDeleteConfirm && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteConfirm(false);
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.25rem',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '420px',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-light)',
+              borderRadius: '20px',
+              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)',
+              padding: '1.5rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(127, 29, 29, 0.10)',
+                  border: '1px solid rgba(127, 29, 29, 0.16)',
+                  color: 'var(--burgundy)',
+                  fontSize: '1.15rem',
+                  flexShrink: 0,
+                }}
+              >
+                🗑
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Delete chant?
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.9rem',
+                    color: 'var(--text-muted)',
+                    marginTop: '0.2rem',
+                  }}
+                >
+                  This action cannot be undone.
+                </div>
+              </div>
+            </div>
+
+            <p
+              style={{
+                margin: 0,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.6,
+                fontSize: '0.95rem',
+              }}
+            >
+              Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>&ldquo;{chant.title}&rdquo;</strong> from the library?
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                marginTop: '1.5rem',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteConfirm(false);
+                }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDeleteClick();
+                }}
+                disabled={isDeleting}
+                style={{
+                  background: 'rgba(127, 29, 29, 0.12)',
+                  borderColor: 'rgba(127, 29, 29, 0.2)',
+                  color: 'var(--burgundy)',
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Chant'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

@@ -47,6 +47,8 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   };
   const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [isHidingAll, setIsHidingAll] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const notificationTimerRef = useState<{ current: number | null }>({ current: null })[0];
 
   const [chants, setChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
@@ -58,6 +60,19 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [selectedPart, setSelectedPart] = useState("All Parts");
   const [selectedTone, setSelectedTone] = useState("All Tones");
   const [selectedLanguage, setSelectedLanguage] = useState("All Languages");
+
+  const showNotification = (message: string) => {
+    setNotificationMessage(message);
+
+    if (notificationTimerRef.current) {
+      window.clearTimeout(notificationTimerRef.current);
+    }
+
+    notificationTimerRef.current = window.setTimeout(() => {
+      setNotificationMessage("");
+      notificationTimerRef.current = null;
+    }, 10000);
+  };
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem("psaltikon_admin_authed") === "true");
@@ -84,6 +99,14 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
 
     void loadChants();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        window.clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, [notificationTimerRef]);
 
   const filterOptions = useMemo(() => buildFilterOptions(chants), [chants]);
 
@@ -191,8 +214,115 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
     alert("All chants have been hidden.");
   };
 
+  const handleDeleteChant = (chantId: string) => {
+    setChants((current) => current.filter((chant) => chant.id !== chantId));
+    showNotification("Chant deleted successfully.");
+  };
+
+  const handleSavedChant = (savedChant: Chant) => {
+    const exists = chants.some((chant) => chant.id === savedChant.id);
+
+    setChants((current) => {
+      if (exists) {
+        return current.map((chant) => (chant.id === savedChant.id ? savedChant : chant));
+      }
+      return [savedChant, ...current];
+    });
+
+    showNotification(exists ? "Chant updated successfully." : "Chant uploaded successfully.");
+  };
+
   return (
     <>
+      <AnimatePresence>
+        {notificationMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'fixed',
+              top: '1.25rem',
+              right: '1.25rem',
+              zIndex: 1100,
+              maxWidth: '420px',
+              width: 'calc(100vw - 2.5rem)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-light)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.18)',
+              padding: '0.95rem 1rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+            }}
+          >
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(34, 197, 94, 0.12)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                color: '#16a34a',
+                fontSize: '0.95rem',
+              }}
+            >
+              ✓
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  color: 'var(--text-primary)',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  lineHeight: 1.25,
+                }}
+              >
+                Success
+              </div>
+              <div
+                style={{
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
+                  marginTop: '0.15rem',
+                }}
+              >
+                {notificationMessage}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setNotificationMessage("");
+                if (notificationTimerRef.current) {
+                  window.clearTimeout(notificationTimerRef.current);
+                  notificationTimerRef.current = null;
+                }
+              }}
+              aria-label="Dismiss notification"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                lineHeight: 1,
+                padding: '0.1rem',
+                flexShrink: 0,
+              }}
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="page-with-sidebar">
         {/* Sidebar */}
         <motion.aside
@@ -223,46 +353,6 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <label className="filter-label">Feast</label>
-            <select
-              className="filter-select"
-              value={selectedFeast}
-              onChange={(e) => setSelectedFeast(e.target.value)}
-            >
-              {filterOptions.feasts.map((feast) => (
-                <option key={feast} value={feast}>
-                  {feast}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <label className="filter-label">Service</label>
-            <select
-              className="filter-select"
-              value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
-            >
-              {filterOptions.services.map((service) => (
-                <option key={service} value={service}>
-                  {service}
-                </option>
-              ))}
-            </select>
-          </motion.div>
 
           <motion.div
             className="filter-group"
@@ -299,6 +389,46 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               {filterOptions.tones.map((tone) => (
                 <option key={tone} value={tone}>
                   {tone}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+
+          <motion.div
+            className="filter-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <label className="filter-label">Service</label>
+            <select
+              className="filter-select"
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+            >
+              {filterOptions.services.map((service) => (
+                <option key={service} value={service}>
+                  {service}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+
+          <motion.div
+            className="filter-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <label className="filter-label">Feast</label>
+            <select
+              className="filter-select"
+              value={selectedFeast}
+              onChange={(e) => setSelectedFeast(e.target.value)}
+            >
+              {filterOptions.feasts.map((feast) => (
+                <option key={feast} value={feast}>
+                  {feast}
                 </option>
               ))}
             </select>
@@ -504,6 +634,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     chant={chant}
                     onView={onViewChant}
                     onEdit={handleEditChant}
+                    onDelete={handleDeleteChant}
                     index={index}
                   />
                 ))}
@@ -556,15 +687,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
           setUploadModalOpen(false);
           setEditingChant(null);
         }}
-        onSaved={(savedChant) => {
-          setChants((current) => {
-            const exists = current.some((chant) => chant.id === savedChant.id);
-            if (exists) {
-              return current.map((chant) => (chant.id === savedChant.id ? savedChant : chant));
-            }
-            return [savedChant, ...current];
-          });
-        }}
+        onSaved={handleSavedChant}
       />
     </>
   );

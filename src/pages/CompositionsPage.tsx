@@ -15,7 +15,7 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState('');
 
-  const categories = ['All', 'Divine Liturgy', 'Matins', 'Vespers'];
+  const categories = ['All', 'Divine Liturgy', 'Matins', 'Vespers', 'Psalms', 'Special'];
 
   useEffect(() => {
     const loadCompositionChants = async () => {
@@ -25,7 +25,9 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
       const { data, error } = await supabase
         .from('chants')
         .select('*')
-        .in('service', ['Vespers', 'Matins', 'Divine Liturgy'])
+        .or(
+          'service.in.(Vespers,Matins,Divine Liturgy),part.eq.Psalm,part.ilike.%Special%,service.ilike.%Special%'
+        )
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -44,7 +46,15 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
 
   const filteredCompositions = selectedCategory === 'All'
     ? compositionsChants
-    : compositionsChants.filter((c: Chant) => c.service === selectedCategory);
+    : selectedCategory === 'Psalms'
+      ? compositionsChants.filter((c: Chant) => c.part === 'Psalm')
+      : selectedCategory === 'Special'
+        ? compositionsChants.filter(
+            (c: Chant) =>
+              c.part?.toLowerCase().includes('special') ||
+              c.service?.toLowerCase().includes('special')
+          )
+        : compositionsChants.filter((c: Chant) => c.service === selectedCategory);
 
   return (
     <div style={{ paddingTop: '100px' }}>
@@ -133,7 +143,7 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
               </div>
               <h3 style={{ marginBottom: '0.5rem' }}>Loading compositions...</h3>
               <p style={{ color: 'var(--text-muted)' }}>
-                Pulling chants tagged for Vespers, Matins, and Divine Liturgy.
+                Pulling chants tagged for Vespers, Matins, Divine Liturgy, Psalms, and Special categories.
               </p>
             </motion.div>
           ) : chantsError ? (
@@ -194,7 +204,7 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
               </div>
               <h3 style={{ marginBottom: '0.5rem' }}>No compositions found</h3>
               <p style={{ color: 'var(--text-muted)' }}>
-                No chants matching the selected service tags were found.
+                No chants matching the selected category were found.
               </p>
             </motion.div>
           )}

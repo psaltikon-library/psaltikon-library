@@ -7,6 +7,37 @@ interface PhoneticsPageProps {
   onViewChant: (id: string) => void;
 }
 
+const getPhoneticsPdfPath = (chant: Chant) => {
+  const anyChant = chant as any;
+  return (
+    anyChant.phonetics_pdf_path ||
+    anyChant.phoneticsPdfPath ||
+    anyChant.phoneticsPdfURL ||
+    anyChant.phoneticsPdfUrl ||
+    ''
+  );
+};
+
+const getPhoneticsPdfUrl = (chant: Chant) => {
+  const pdfPath = getPhoneticsPdfPath(chant);
+  if (!pdfPath) return '';
+
+  if (
+    /^https?:\/\//i.test(pdfPath) ||
+    pdfPath.startsWith('blob:') ||
+    pdfPath.startsWith('data:')
+  ) {
+    return pdfPath;
+  }
+
+  if (pdfPath.startsWith('/')) {
+    return pdfPath;
+  }
+
+  const { data } = supabase.storage.from('phonetic_files').getPublicUrl(pdfPath);
+  return data?.publicUrl || '';
+};
+
 const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [selectedChant, setSelectedChant] = useState<Chant | null>(null);
@@ -39,6 +70,10 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
 
     void loadPhoneticsChants();
   }, []);
+
+  const visiblePhoneticsChants = phoneticsChants.filter(
+    (chant: Chant) => !!((chant as any).has_phonetics || (chant as any).hasPhonetics)
+  );
 
   return (
     <div style={{ paddingTop: '100px' }}>
@@ -143,12 +178,13 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
               <h3 style={{ marginBottom: '0.5rem' }}>Could not load phonetics chants</h3>
               <p style={{ color: 'var(--text-muted)' }}>{chantsError}</p>
             </motion.div>
-          ) : phoneticsChants.length > 0 ? (
+          ) : visiblePhoneticsChants.length > 0 ? (
             <div className="chants-grid">
-              {phoneticsChants.map((chant: Chant, index: number) => {
+              {visiblePhoneticsChants.map((chant: Chant, index: number) => {
                 const greekTitle = (chant as any).titleGreek || (chant as any).title_greek;
                 const phoneticsText = (chant as any).phoneticsText || (chant as any).phonetics_text;
                 const chantLanguage = chant.language || 'Arabic';
+                const phoneticsPdfUrl = getPhoneticsPdfUrl(chant);
 
                 return (
                   <motion.div
@@ -219,13 +255,16 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
                           className="btn btn-secondary btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            alert('Download feature coming soon!');
+                            if (!phoneticsPdfUrl) {
+                              alert('No phonetics PDF is linked to this chant yet.');
+                              return;
+                            }
+                            window.open(phoneticsPdfUrl, '_blank', 'noopener,noreferrer');
                           }}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          Download
-                          <span className="coming-soon-badge">Soon</span>
+                          Open PDF
                         </motion.button>
                       </div>
                     </motion.div>
@@ -256,7 +295,7 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
               </div>
               <h3 style={{ marginBottom: '0.5rem' }}>No phonetics chants found</h3>
               <p style={{ color: 'var(--text-muted)' }}>
-                Add chants with phonetics text in the database to have them appear here.
+                Add chants with `has_phonetics` set to true to have them appear here.
               </p>
             </motion.div>
           )}
@@ -343,6 +382,22 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
                   {(selectedChant as any).phoneticsText || (selectedChant as any).phonetics_text}
                 </div>
               )}
+              {(() => {
+                const selectedPhoneticsPdfUrl = getPhoneticsPdfUrl(selectedChant);
+                return selectedPhoneticsPdfUrl ? (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <a
+                      href={selectedPhoneticsPdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-secondary"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Open Phonetics PDF
+                    </a>
+                  </div>
+                ) : null;
+              })()}
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                 <motion.button
