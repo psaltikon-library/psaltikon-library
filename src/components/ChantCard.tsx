@@ -325,12 +325,12 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
           className="btn btn-secondary btn-sm"
           onClick={(e) => {
             e.stopPropagation();
-            handleComingSoon('Download');
+            handleComingSoon('Booklet');
           }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          Download
+          + Booklet
           <span className="coming-soon-badge">Soon</span>
         </motion.button>
         {isAdmin && (
@@ -360,18 +360,7 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
             {isDeleting ? 'Deleting...' : 'Delete'}
           </motion.button>
         )}
-        <motion.button
-          className="btn btn-ghost btn-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleComingSoon('Add to Booklet');
-          }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          style={{ marginLeft: 'auto' }}
-        >
-          + Booklet
-        </motion.button>
+      
       </div>
       {showDeleteConfirm && (
         <div

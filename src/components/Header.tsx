@@ -237,8 +237,7 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
                   type="button"
                   className="auth-btn auth-btn--ghost"
                   onClick={() => openAuth("login")}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
+                
                 >
                   Login
                 </motion.button>

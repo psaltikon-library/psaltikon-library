@@ -39,17 +39,7 @@ const getRouteState = (): { page: Page; chantId: string | null } => {
       chantId: urlPage === 'chant-detail' ? urlChantId : null,
     };
   }
-
-  const savedPage = localStorage.getItem(STORAGE_PAGE_KEY);
-  const savedChantId = localStorage.getItem(STORAGE_CHANT_KEY);
-
-  if (isValidPage(savedPage)) {
-    return {
-      page: savedPage,
-      chantId: savedPage === 'chant-detail' ? savedChantId : null,
-    };
-  }
-
+  
   return { page: 'home', chantId: null };
 };
 
