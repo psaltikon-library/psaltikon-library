@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
+import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 
 interface CompositionsPageProps {
   onViewChant: (id: string) => void;
@@ -30,14 +31,25 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
         )
         .order('created_at', { ascending: false });
 
+      const filterForCompositions = (chant: Chant) => {
+        return (
+          chant.service === 'Vespers' ||
+          chant.service === 'Matins' ||
+          chant.service === 'Divine Liturgy' ||
+          chant.part === 'Psalm' ||
+          chant.part.toLowerCase().includes('special') ||
+          chant.service.toLowerCase().includes('special')
+        );
+      };
+
       if (error) {
-        setCompositionsChants([]);
-        setChantsError(error.message || 'Failed to load compositions chants.');
+        setCompositionsChants(resolveChantsWithDevFallback(null).filter(filterForCompositions));
+        setChantsError(import.meta.env.DEV ? '' : (error.message || 'Failed to load compositions chants.'));
         setIsLoadingChants(false);
         return;
       }
 
-      setCompositionsChants((data as Chant[]) || []);
+      setCompositionsChants(resolveChantsWithDevFallback(data as Chant[] | null).filter(filterForCompositions));
       setIsLoadingChants(false);
     };
 

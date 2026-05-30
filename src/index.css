@@ -237,6 +237,19 @@ a:hover {
   color: var(--text-muted);
 }
 
+.page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: calc(100px + var(--space-2xl)) var(--space-xl) var(--space-4xl);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: calc(80px + var(--space-lg)) var(--space-md) var(--space-2xl);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MODERN HEADER
    ═══════════════════════════════════════════════════════════════════════════ */

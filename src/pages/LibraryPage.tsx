@@ -4,6 +4,7 @@ import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
 import { supabase } from "../lib/supabase";
 import { Chant } from "../types";
+import { resolveChantsWithDevFallback } from "../utils/chantFallback";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
@@ -87,13 +88,13 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
         .order("created_at", { ascending: false });
 
       if (error) {
-        setChants([]);
-        setChantsError(error.message || "Failed to load chants.");
+        setChants(resolveChantsWithDevFallback(null));
+        setChantsError(import.meta.env.DEV ? "" : (error.message || "Failed to load chants."));
         setIsLoadingChants(false);
         return;
       }
 
-      setChants((data as Chant[]) || []);
+      setChants(resolveChantsWithDevFallback(data as Chant[] | null));
       setIsLoadingChants(false);
     };
 
@@ -635,6 +636,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     onView={onViewChant}
                     onEdit={handleEditChant}
                     onDelete={handleDeleteChant}
+                    showSaveButton={true}
                     index={index}
                   />
                 ))}

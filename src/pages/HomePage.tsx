@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
+import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 
 interface HomePageProps {
   onNavigate: (page: Page) => void;
@@ -62,12 +63,12 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         .limit(3);
 
       if (error) {
-        setFeaturedChants([]);
+        setFeaturedChants(resolveChantsWithDevFallback(null).slice(0, 3));
         setIsLoadingFeatured(false);
         return;
       }
 
-      setFeaturedChants((data as Chant[]) || []);
+      setFeaturedChants(resolveChantsWithDevFallback(data as Chant[] | null).slice(0, 3));
       setIsLoadingFeatured(false);
     };
 

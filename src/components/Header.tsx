@@ -94,7 +94,7 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
     }
 
     if (action === "saved") {
-      window.alert("Saved items coming soon.");
+      onNavigate("saved-items");
       return;
     }
 

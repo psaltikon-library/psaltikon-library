@@ -3,6 +3,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
+import { isChantSaved, saveChant, unsaveChant } from '../utils/savedChants';
+import { resolveChantWithDevFallback } from '../utils/chantFallback';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -418,6 +420,14 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
         .maybeSingle();
 
       if (error) {
+        const fallbackChant = resolveChantWithDevFallback(null, chantId);
+
+        if (fallbackChant) {
+          setChant(fallbackChant);
+          setIsLoadingChant(false);
+          return;
+        }
+
         setChant(null);
         setChantError(error.message || 'Failed to load chant.');
         setIsLoadingChant(false);
@@ -425,14 +435,30 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
       }
 
       if (!data) {
+        const fallbackChant = resolveChantWithDevFallback(null, chantId);
+
+        if (fallbackChant) {
+          setChant(fallbackChant);
+          setIsLoadingChant(false);
+          return;
+        }
+
         setChant(null);
         setChantError('The requested chant could not be found.');
         setIsLoadingChant(false);
         return;
       }
 
-      setChant(data as Chant);
+      setChant(resolveChantWithDevFallback([data as Chant], chantId));
       setIsLoadingChant(false);
+
+      // Check if chant is saved
+      try {
+        const saved = await isChantSaved(chantId);
+        setIsSaved(saved);
+      } catch (error) {
+        setIsSaved(false);
+      }
     };
 
     void loadChant();
@@ -440,6 +466,25 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
   const handleComingSoon = (action: string) => {
     alert(`${action} feature coming soon! This will be available in a future update.`);
+  };
+
+  const handleSaveChant = async () => {
+    setIsSaving(true);
+
+    try {
+      if (isSaved) {
+        await unsaveChant(chantId || '');
+        setIsSaved(false);
+      } else {
+        await saveChant(chantId || '');
+        setIsSaved(true);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save chant.';
+      alert(message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const chantTitle = chant?.title || 'Chant';
@@ -505,6 +550,10 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
   const pdfRendererRef = useRef<PdfDocumentRendererHandle | null>(null);
   const pdfNavLockRef = useRef(false);
+
+  // Save state
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   function goToPdfPage(target: number) {
     const t = Math.max(1, Math.min(pdfNumPages || 1, target));
@@ -725,6 +774,16 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
             disabled={!hasPdf}
           >
             Download PDF
+          </motion.button>
+
+          <motion.button
+            className="btn btn-secondary"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSaveChant}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : isSaved ? '★ Saved' : '☆ Save'}
           </motion.button>
 
           <motion.button

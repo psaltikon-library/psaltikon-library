@@ -2,12 +2,17 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Chant } from '../types';
 import { supabase } from '../lib/supabase';
+import { saveChant, unsaveChant } from '../utils/savedChants';
 
 interface ChantCardProps {
   chant: Chant;
   onView: (id: string) => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onSave?: (id: string) => void;
+  onUnsave?: (id: string) => void;
+  isSaved?: boolean;
+  showSaveButton?: boolean;
   index?: number;
 }
 
@@ -93,12 +98,14 @@ const getMartyriaForTone = (tone?: string | null) => {
   return '𝄞';
 };
 
-const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProps) => {
+const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = false, index = 0 }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState(((chant as any).status || 'pending').toString().toLowerCase());
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSavedState, setIsSavedState] = useState(isSaved);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('psaltikon_admin_authed') === 'true');
@@ -107,6 +114,10 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
   useEffect(() => {
     setStatus(((chant as any).status || 'pending').toString().toLowerCase());
   }, [chant]);
+
+  useEffect(() => {
+    setIsSavedState(isSaved);
+  }, [isSaved]);
 
   const handleComingSoon = (action: string) => {
     alert(`${action} feature coming soon! This will be available in a future update.`);
@@ -178,6 +189,28 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
     }
 
     setIsUpdatingStatus(false);
+  };
+
+  const handleSaveClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSaving(true);
+
+    try {
+      if (isSavedState) {
+        await unsaveChant(chant.id);
+        setIsSavedState(false);
+        onUnsave?.(chant.id);
+      } else {
+        await saveChant(chant.id);
+        setIsSavedState(true);
+        onSave?.(chant.id);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save chant.';
+      alert(message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const martyriaSymbol = getMartyriaForTone(chant.tone);
@@ -321,6 +354,17 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
         >
           View Chant
         </motion.button>
+        {showSaveButton && (
+          <motion.button
+            className={`btn btn-sm ${isSavedState ? 'btn-secondary' : 'btn-secondary'}`}
+            onClick={handleSaveClick}
+            disabled={isSaving}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            {isSaving ? 'Saving...' : isSavedState ? '★ Saved' : '☆ Save'}
+          </motion.button>
+        )}
         <motion.button
           className="btn btn-secondary btn-sm"
           onClick={(e) => {
@@ -360,7 +404,7 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, index = 0 }: ChantCardProp
             {isDeleting ? 'Deleting...' : 'Delete'}
           </motion.button>
         )}
-      
+
       </div>
       {showDeleteConfirm && (
         <div

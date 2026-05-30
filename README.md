@@ -96,6 +96,21 @@ We welcome contributions from chanters, scholars, and faithful who share our vis
 
 ---
 
+## 🗄️ Supabase Setup
+
+The app reads chants from Supabase and stores user bookmarks in a `saved_chants` join table.
+
+Required tables:
+
+- `chants` with `id` as `uuid`
+- `saved_chants` with `user_id` referencing `auth.users(id)` and `chant_id` referencing `chants(id)`
+
+If you see `Could not find the table 'public.saved_chants' in the schema cache`, apply the migration in `supabase/migrations/20260529_create_saved_chants.sql` to your Supabase project, then reload the schema cache in the Supabase dashboard under `Database -> API`.
+
+If the cache still shows the old schema, wait a minute and refresh the page, or run the SQL manually in the Supabase SQL editor to confirm the table exists.
+
+---
+
 <div align="center">
 
 ## ✨☦️ Glory to the Holy Trinity ☦️✨

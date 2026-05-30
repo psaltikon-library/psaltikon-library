@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
+import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 
 interface PhoneticsPageProps {
   onViewChant: (id: string) => void;
@@ -58,13 +59,13 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        setPhoneticsChants([]);
-        setChantsError(error.message || 'Failed to load phonetics chants.');
+        setPhoneticsChants(resolveChantsWithDevFallback(null).filter((chant) => chant.hasPhonetics));
+        setChantsError(import.meta.env.DEV ? '' : (error.message || 'Failed to load phonetics chants.'));
         setIsLoadingChants(false);
         return;
       }
 
-      setPhoneticsChants((data as Chant[]) || []);
+      setPhoneticsChants(resolveChantsWithDevFallback(data as Chant[] | null).filter((chant) => chant.hasPhonetics));
       setIsLoadingChants(false);
     };
 

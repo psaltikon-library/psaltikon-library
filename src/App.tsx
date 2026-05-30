@@ -9,6 +9,7 @@ import PhoneticsPage from './pages/PhoneticsPage';
 import CompositionsPage from './pages/CompositionsPage';
 import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
+import SavedItemsPage from './pages/SavedItemsPage';
 import { Page } from './types';
 
 const STORAGE_PAGE_KEY = 'psaltikon_current_page';
@@ -22,6 +23,7 @@ const validPages: Page[] = [
   'compositions',
   'about',
   'admin',
+  'saved-items',
 ];
 
 const isValidPage = (value: string | null): value is Page => {
@@ -254,6 +256,12 @@ function App() {
         return (
           <AdminPage
             onNavigate={navigateTo}
+          />
+        );
+      case 'saved-items':
+        return (
+          <SavedItemsPage
+            onViewChant={navigateToChant}
           />
         );
       default:
