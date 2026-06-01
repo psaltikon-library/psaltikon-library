@@ -5,6 +5,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
 import { isChantSaved, saveChant, unsaveChant } from '../utils/savedChants';
 import { resolveChantWithDevFallback } from '../utils/chantFallback';
+import { recordChantView } from '../utils/analytics';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -451,6 +452,8 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
       setChant(resolveChantWithDevFallback([data as Chant], chantId));
       setIsLoadingChant(false);
+
+      void recordChantView(chantId);
 
       // Check if chant is saved
       try {

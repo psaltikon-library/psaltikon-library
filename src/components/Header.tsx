@@ -7,9 +7,10 @@ interface HeaderProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   isScrolled: boolean;
+  onOpenSuggestion: () => void;
 }
 
-const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
+const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
@@ -95,6 +96,11 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
 
     if (action === "saved") {
       onNavigate("saved-items");
+      return;
+    }
+
+    if (action === "suggestion") {
+      onOpenSuggestion();
       return;
     }
 
@@ -199,6 +205,14 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
                             className="account-menu-item"
                           >
                             <span>Saved Items</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("suggestion")}
+                            className="account-menu-item"
+                          >
+                            <span>Suggest a Chant</span>
                             <span aria-hidden="true">›</span>
                           </button>
                           <button
@@ -345,6 +359,14 @@ const Header = ({ currentPage, onNavigate, isScrolled }: HeaderProps) => {
                             className="account-menu-item"
                           >
                             <span>Saved Items</span>
+                            <span aria-hidden="true">›</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAccountAction("suggestion")}
+                            className="account-menu-item"
+                          >
+                            <span>Suggest a Chant</span>
                             <span aria-hidden="true">›</span>
                           </button>
                           <button

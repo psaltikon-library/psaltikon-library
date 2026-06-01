@@ -10,7 +10,9 @@ import CompositionsPage from './pages/CompositionsPage';
 import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import SavedItemsPage from './pages/SavedItemsPage';
+import SuggestionModal from './components/SuggestionModal';
 import { Page } from './types';
+import { recordChantView, recordPageView } from './utils/analytics';
 
 const STORAGE_PAGE_KEY = 'psaltikon_current_page';
 const STORAGE_CHANT_KEY = 'psaltikon_selected_chant';
@@ -143,6 +145,7 @@ function App() {
   const [selectedChantId, setSelectedChantId] = useState<string | null>(initialRoute.chantId);
   const [isLoading, setIsLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
 
   const syncRoute = useCallback(
     (page: Page, chantId: string | null, mode: 'push' | 'replace' = 'push') => {
@@ -183,6 +186,8 @@ function App() {
   useEffect(() => {
     syncRoute(currentPage, selectedChantId, 'replace');
 
+    void recordPageView(currentPage, selectedChantId);
+
     const handlePopState = () => {
       const route = getRouteState();
       setCurrentPage(route.page);
@@ -198,6 +203,7 @@ function App() {
     setSelectedChantId(chantId);
     setCurrentPage('chant-detail');
     syncRoute('chant-detail', chantId);
+    void recordChantView(chantId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -284,6 +290,7 @@ function App() {
             currentPage={currentPage} 
             onNavigate={navigateTo}
             isScrolled={isScrolled}
+            onOpenSuggestion={() => setSuggestionOpen(true)}
           />
           
           <AnimatePresence mode="wait">
@@ -302,6 +309,14 @@ function App() {
           <Footer onNavigate={navigateTo} />
         </motion.div>
       )}
+
+      <SuggestionModal
+        open={suggestionOpen}
+        onClose={() => setSuggestionOpen(false)}
+        onSubmitted={() => {
+          setSuggestionOpen(false);
+        }}
+      />
     </AnimatePresence>
   );
 }
