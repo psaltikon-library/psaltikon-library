@@ -4,6 +4,7 @@ import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
+import { getSavedChantIds } from '../utils/savedChants';
 
 interface CompositionsPageProps {
   onViewChant: (id: string) => void;
@@ -15,6 +16,7 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
   const [compositionsChants, setCompositionsChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState('');
+  const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
   const categories = ['All', 'Divine Liturgy', 'Matins', 'Vespers', 'Psalms', 'Special'];
 
@@ -54,6 +56,14 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
     };
 
     void loadCompositionChants();
+  }, []);
+
+  useEffect(() => {
+    const loadSavedChantIds = async () => {
+      setSavedChantIds(await getSavedChantIds());
+    };
+
+    void loadSavedChantIds();
   }, []);
 
   const filteredCompositions = selectedCategory === 'All'
@@ -189,6 +199,8 @@ const CompositionsPage = ({ onViewChant }: CompositionsPageProps) => {
                   key={composition.id}
                   chant={composition}
                   onView={onViewChant}
+                  isSaved={savedChantIds.includes(composition.id)}
+                  showSaveButton={true}
                   index={index}
                 />
               ))}

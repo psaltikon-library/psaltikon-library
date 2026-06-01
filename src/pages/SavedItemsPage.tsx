@@ -280,6 +280,9 @@ const SavedItemsPage = ({ onViewChant }: SavedItemsPageProps) => {
                     chant={chant}
                     onView={onViewChant}
                     onDelete={() => handleUnsaveChant(chant.id)}
+                    onUnsave={handleUnsaveChant}
+                    isSaved={true}
+                    showSaveButton={true}
                     index={index}
                   />
                 ))}

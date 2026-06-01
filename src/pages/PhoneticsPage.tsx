@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
+import { getSavedChantIds, saveChant, unsaveChant } from '../utils/savedChants';
 
 interface PhoneticsPageProps {
   onViewChant: (id: string) => void;
@@ -46,6 +47,7 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
   const [phoneticsChants, setPhoneticsChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState('');
+  const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadPhoneticsChants = async () => {
@@ -71,6 +73,37 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
 
     void loadPhoneticsChants();
   }, []);
+
+  useEffect(() => {
+    const loadSavedChantIds = async () => {
+      setSavedChantIds(await getSavedChantIds());
+    };
+
+    void loadSavedChantIds();
+  }, []);
+
+  const handleSavedChantId = (chantId: string) => {
+    setSavedChantIds((current) => (current.includes(chantId) ? current : [...current, chantId]));
+  };
+
+  const handleUnsavedChantId = (chantId: string) => {
+    setSavedChantIds((current) => current.filter((id) => id !== chantId));
+  };
+
+  const toggleSaveChant = async (chantId: string) => {
+    try {
+      if (savedChantIds.includes(chantId)) {
+        await unsaveChant(chantId);
+        handleUnsavedChantId(chantId);
+      } else {
+        await saveChant(chantId);
+        handleSavedChantId(chantId);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save chant.';
+      alert(message);
+    }
+  };
 
   const visiblePhoneticsChants = phoneticsChants.filter(
     (chant: Chant) => !!((chant as any).has_phonetics || (chant as any).hasPhonetics)
@@ -256,6 +289,17 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
                           className="btn btn-secondary btn-sm"
                           onClick={(e) => {
                             e.stopPropagation();
+                            void toggleSaveChant(chant.id);
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {savedChantIds.includes(chant.id) ? '★ Saved' : '☆ Save'}
+                        </motion.button>
+                        <motion.button
+                          className="btn btn-secondary btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (!phoneticsPdfUrl) {
                               alert('No phonetics PDF is linked to this chant yet.');
                               return;
@@ -375,6 +419,7 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
                 {selectedChant.tone && <span className="badge badge-burgundy">{selectedChant.tone}</span>}
                 {selectedChant.service && <span className="badge badge-gold">{selectedChant.service}</span>}
                 <span className="badge badge-purple">{selectedChant.language || 'Arabic'}</span>
+                {savedChantIds.includes(selectedChant.id) && <span className="badge badge-success">Saved</span>}
               </div>
 
               {((selectedChant as any).phoneticsText || (selectedChant as any).phonetics_text) && (
@@ -419,6 +464,14 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
                   whileTap={{ scale: 0.95 }}
                 >
                   View Full Page
+                </motion.button>
+                <motion.button
+                  className="btn btn-secondary"
+                  onClick={() => void toggleSaveChant(selectedChant.id)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {savedChantIds.includes(selectedChant.id) ? 'Unsave' : 'Save'}
                 </motion.button>
               </div>
             </motion.div>

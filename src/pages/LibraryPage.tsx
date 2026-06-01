@@ -5,6 +5,7 @@ import UploadChantModal from "../components/UploadChantModal";
 import { supabase } from "../lib/supabase";
 import { Chant } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
+import { getSavedChantIds } from "../utils/savedChants";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
@@ -54,6 +55,7 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [chants, setChants] = useState<Chant[]>([]);
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState("");
+  const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeast, setSelectedFeast] = useState("All Feasts");
@@ -99,6 +101,14 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
     };
 
     void loadChants();
+  }, []);
+
+  useEffect(() => {
+    const loadSavedChantIds = async () => {
+      setSavedChantIds(await getSavedChantIds());
+    };
+
+    void loadSavedChantIds();
   }, []);
 
   useEffect(() => {
@@ -231,6 +241,16 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
     });
 
     showNotification(exists ? "Chant updated successfully." : "Chant uploaded successfully.");
+  };
+
+  const handleSavedChantId = (chantId: string) => {
+    setSavedChantIds((current) =>
+      current.includes(chantId) ? current : [...current, chantId]
+    );
+  };
+
+  const handleUnsavedChantId = (chantId: string) => {
+    setSavedChantIds((current) => current.filter((id) => id !== chantId));
   };
 
   return (
@@ -636,6 +656,9 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     onView={onViewChant}
                     onEdit={handleEditChant}
                     onDelete={handleDeleteChant}
+                    isSaved={savedChantIds.includes(chant.id)}
+                    onSave={handleSavedChantId}
+                    onUnsave={handleUnsavedChantId}
                     showSaveButton={true}
                     index={index}
                   />

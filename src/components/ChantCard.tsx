@@ -98,7 +98,7 @@ const getMartyriaForTone = (tone?: string | null) => {
   return '𝄞';
 };
 
-const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = false, index = 0 }: ChantCardProps) => {
+const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = true, index = 0 }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState(((chant as any).status || 'pending').toString().toLowerCase());
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -331,6 +331,11 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
             Phonetics
           </span>
         )}
+        {isSavedState && (
+          <span className="badge badge-success">
+            Saved
+          </span>
+        )}
       </div>
 
       <p style={{ 
@@ -356,7 +361,7 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
         </motion.button>
         {showSaveButton && (
           <motion.button
-            className={`btn btn-sm ${isSavedState ? 'btn-secondary' : 'btn-secondary'}`}
+            className="btn btn-secondary btn-sm"
             onClick={handleSaveClick}
             disabled={isSaving}
             whileHover={{ scale: 1.03 }}

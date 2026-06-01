@@ -4,6 +4,7 @@ import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
+import { getSavedChantIds } from '../utils/savedChants';
 
 interface HomePageProps {
   onNavigate: (page: Page) => void;
@@ -22,6 +23,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
 
   const [featuredChants, setFeaturedChants] = useState<Chant[]>([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+  const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
   const stats = [
     { value: "500+", label: "Sacred Chants" },
@@ -73,6 +75,14 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
     };
 
     void loadFeaturedChants();
+  }, []);
+
+  useEffect(() => {
+    const loadSavedChantIds = async () => {
+      setSavedChantIds(await getSavedChantIds());
+    };
+
+    void loadSavedChantIds();
   }, []);
 
   return (
@@ -301,6 +311,8 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
                   key={chant.id}
                   chant={chant}
                   onView={onViewChant}
+                  isSaved={savedChantIds.includes(chant.id)}
+                  showSaveButton={true}
                   index={index}
                 />
               ))}

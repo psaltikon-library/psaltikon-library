@@ -1045,6 +1045,11 @@ a:hover {
   color: var(--purple);
 }
 
+.badge-success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
 .badge-blue {
   background: rgba(30, 58, 95, 0.1);
   color: var(--blue);

@@ -84,3 +84,24 @@ export async function getSavedChants(): Promise<Chant[]> {
     .map((item: any) => item.chants)
     .filter((chant: any) => chant !== null) as Chant[];
 }
+
+export async function getSavedChantIds(): Promise<string[]> {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('saved_chants')
+    .select('chant_id')
+    .eq('user_id', user.id);
+
+  if (error || !data || !Array.isArray(data)) {
+    return [];
+  }
+
+  return data
+    .map((item: any) => item.chant_id)
+    .filter((chantId: any) => typeof chantId === 'string');
+}
