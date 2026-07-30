@@ -168,10 +168,10 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
     {
       icon: icons.library,
       title: 'Custom Booklets',
-      subtitle: 'Coming soon',
+      subtitle: 'Build & share',
       description:
         'Assemble personalized service booklets by selecting chant and generating a combined PDF.',
-      page: null as Page | null,
+      page: 'booklets' as Page | null,
     },
   ];
 

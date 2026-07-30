@@ -47,7 +47,7 @@ const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: Heade
   const navItems: { page: Page; label: string }[] = [
     { page: "home", label: "Home" },
     { page: "library", label: "Library" },
-    { page: "phonetics", label: "Phonetics" },
+    { page: "booklets", label: "Booklets" },
     { page: "compositions", label: "Compositions" },
     { page: "about", label: "About" },
   ];

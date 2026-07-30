@@ -395,9 +395,10 @@ const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
 interface ChantDetailPageProps {
   chantId: string | null;
   onBack: () => void;
+  onNavigate?: (page: import('../types').Page) => void;
 }
 
-const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
+const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) => {
   const [chant, setChant] = useState<Chant | null>(null);
   const [isLoadingChant, setIsLoadingChant] = useState(true);
   const [chantError, setChantError] = useState('');
@@ -466,10 +467,6 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
 
     void loadChant();
   }, [chantId]);
-
-  const handleComingSoon = (action: string) => {
-    alert(`${action} feature coming soon! This will be available in a future update.`);
-  };
 
   const handleSaveChant = async () => {
     setIsSaving(true);
@@ -793,10 +790,9 @@ const ChantDetailPage = ({ chantId, onBack }: ChantDetailPageProps) => {
             className="btn btn-secondary"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => handleComingSoon('Add to Booklet')}
+            onClick={() => onNavigate?.('booklets')}
           >
             + Add to Booklet
-            <span className="coming-soon-badge">Soon</span>
           </motion.button>
 
           <motion.button
