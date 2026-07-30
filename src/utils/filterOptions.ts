@@ -42,11 +42,15 @@ const emptyByCategory = (): FilterOptionsByCategory => ({
   language: [],
 });
 
+// Alphabetical, but digit-aware so "Tone 2" sorts before "Tone 10" rather than
+// after it. Used everywhere filter options are listed.
+export const compareFilterValues = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
 export async function loadFilterOptions(): Promise<FilterOptionsByCategory> {
   const { data, error } = await supabase
     .from('filter_options')
     .select('id, category, value, sort_order')
-    .order('sort_order', { ascending: true })
     .order('value', { ascending: true });
 
   if (error) {
@@ -57,22 +61,35 @@ export async function loadFilterOptions(): Promise<FilterOptionsByCategory> {
   ((data || []) as FilterOptionRow[]).forEach((row) => {
     if (grouped[row.category]) grouped[row.category].push(row);
   });
+
+  FILTER_CATEGORIES.forEach((category) => {
+    grouped[category].sort((a, b) => compareFilterValues(a.value, b.value));
+  });
+
   return grouped;
 }
 
 // Values for the upload form selects. Falls back to the defaults per category
-// when the table is missing or a category has no rows.
+// when the table is missing or a category has no rows. Always alphabetical.
 export async function loadFilterValues(): Promise<Record<FilterCategory, string[]>> {
+  const sortedDefaults = () => {
+    const defaults = {} as Record<FilterCategory, string[]>;
+    FILTER_CATEGORIES.forEach((category) => {
+      defaults[category] = [...DEFAULT_FILTER_OPTIONS[category]].sort(compareFilterValues);
+    });
+    return defaults;
+  };
+
   try {
     const grouped = await loadFilterOptions();
-    const result = { ...DEFAULT_FILTER_OPTIONS };
+    const result = sortedDefaults();
     FILTER_CATEGORIES.forEach((category) => {
       const values = grouped[category].map((row) => row.value);
       if (values.length > 0) result[category] = values;
     });
     return result;
   } catch {
-    return DEFAULT_FILTER_OPTIONS;
+    return sortedDefaults();
   }
 }
 

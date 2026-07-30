@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { Chant } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
 import { getSavedChantIds } from "../utils/savedChants";
+import { compareFilterValues } from "../utils/filterOptions";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
@@ -19,7 +20,7 @@ const buildFilterOptions = (chants: Chant[]) => {
           .map((value) => (typeof value === "string" ? value.trim() : ""))
           .filter(Boolean)
       )
-    ).sort((a, b) => a.localeCompare(b));
+    ).sort(compareFilterValues);
 
     return [allLabel, ...unique];
   };
