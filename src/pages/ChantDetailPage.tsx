@@ -525,7 +525,11 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
     chantPdfs.length > 0
       ? chantPdfs.map((row, index) => ({
           path: row.pdf_path,
-          label: row.label || row.pdf_path.split('/').pop() || `PDF ${index + 1}`,
+          // Backfilled rows have no label, and their storage filename carries a
+          // UUID prefix — fall back to the chant title rather than showing that.
+          label:
+            row.label ||
+            (chantPdfs.length === 1 ? `${chantTitle}.pdf` : `${chantTitle} — PDF ${index + 1}`),
         }))
       : primaryPdfPath
         ? [{ path: primaryPdfPath, label: `${chantTitle}.pdf` }]
