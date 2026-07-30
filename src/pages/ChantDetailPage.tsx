@@ -227,7 +227,6 @@ const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
   {
     file,
     fileKey,
-    page,
     scale,
     onLoaded,
     onError,
@@ -235,7 +234,6 @@ const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
   }: {
     file: string | File;
     fileKey: string;
-    page: number;
     scale: number;
     onLoaded: (numPages: number) => void;
     onError: (message: string) => void;
@@ -305,47 +303,47 @@ const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
     scrollToPage: internalScrollToPage,
   }));
 
-  // Track the most visible page while scrolling
+  // Track the most visible page while scrolling: the current page is the one
+  // under the container's vertical center. Plain scroll events (rAF-throttled)
+  // never fight the user's scroll position, so scrolling stays fluid.
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
     if (!numPages) return;
 
-    const els = pageWrapRefs.current.filter(Boolean) as HTMLDivElement[];
-    if (!els.length) return;
-
     let raf = 0;
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0))[0];
+    const pickVisiblePage = () => {
+      const rootRect = root.getBoundingClientRect();
+      const centerY = rootRect.top + rootRect.height / 2;
 
-        if (!visible?.target) return;
+      let best = 1;
+      let bestDist = Infinity;
+      pageWrapRefs.current.forEach((el, i) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const dist =
+          centerY < r.top ? r.top - centerY : centerY > r.bottom ? centerY - r.bottom : 0;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i + 1;
+        }
+      });
+      onVisiblePageChange(best);
+    };
 
-        const p = Number((visible.target as HTMLElement).dataset.pageNumber || 1);
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(pickVisiblePage);
+    };
 
-        cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(() => onVisiblePageChange(p));
-      },
-      { root, threshold: [0.25, 0.5, 0.75] }
-    );
-
-    els.forEach((el) => io.observe(el));
+    root.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
-      io.disconnect();
+      root.removeEventListener('scroll', onScroll);
     };
   }, [numPages, onVisiblePageChange]);
-
-  // When page changes via toolbar, scroll to it
-  useEffect(() => {
-    if (!numPages) return;
-    internalScrollToPage(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, numPages]);
 
   return (
     <div className="pdf-doc" ref={scrollRef}>
@@ -847,7 +845,6 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
                 ref={pdfRendererRef}
                 file={pdfSource}
                 fileKey={pdfFileKey}
-                page={pdfPage}
                 scale={pdfScale}
                 onLoaded={handlePdfLoaded}
                 onError={handlePdfDocError}
