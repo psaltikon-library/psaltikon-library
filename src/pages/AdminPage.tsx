@@ -7,6 +7,16 @@ import {
   loadAdminDashboardData,
   setUserAdminStatus,
 } from '../utils/adminDashboard';
+import {
+  FILTER_CATEGORIES,
+  FILTER_CATEGORY_LABELS,
+  FilterCategory,
+  FilterOptionsByCategory,
+  addFilterOption,
+  deleteFilterOption,
+  loadFilterOptions,
+  renameFilterOption,
+} from '../utils/filterOptions';
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return 'Unknown';
@@ -26,6 +36,31 @@ export default function AdminPage({ onNavigate }: Props) {
   const [error, setError] = useState('');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsByCategory | null>(null);
+  const [filterOptionsError, setFilterOptionsError] = useState('');
+  const [newOptionValues, setNewOptionValues] = useState<Record<FilterCategory, string>>({
+    part: '',
+    tone: '',
+    service: '',
+    feast: '',
+    language: '',
+  });
+  const [busyOptionKey, setBusyOptionKey] = useState<string | null>(null);
+
+  const loadFilterSection = async () => {
+    setFilterOptionsError('');
+    try {
+      setFilterOptions(await loadFilterOptions());
+    } catch (filterError) {
+      setFilterOptions(null);
+      setFilterOptionsError(
+        filterError instanceof Error
+          ? `${filterError.message} (Has the 20260730 filter options migration been run in Supabase?)`
+          : 'Failed to load filter options.'
+      );
+    }
+  };
+
   const loadDashboard = async () => {
     setError('');
     setIsLoading(true);
@@ -40,6 +75,8 @@ export default function AdminPage({ onNavigate }: Props) {
     } finally {
       setIsLoading(false);
     }
+
+    await loadFilterSection();
   };
 
   useEffect(() => {
@@ -70,6 +107,56 @@ export default function AdminPage({ onNavigate }: Props) {
     setIsRefreshing(true);
     await loadDashboard();
     setIsRefreshing(false);
+  };
+
+  const handleAddOption = async (category: FilterCategory) => {
+    const value = newOptionValues[category].trim();
+    if (!value) return;
+
+    const existing = filterOptions?.[category] || [];
+    const nextSortOrder = existing.reduce((max, row) => Math.max(max, row.sort_order), 0) + 10;
+
+    try {
+      setBusyOptionKey(`add-${category}`);
+      await addFilterOption(category, value, nextSortOrder);
+      setNewOptionValues((current) => ({ ...current, [category]: '' }));
+      await loadFilterSection();
+    } catch (addError) {
+      alert(addError instanceof Error ? addError.message : 'Failed to add filter option.');
+    } finally {
+      setBusyOptionKey(null);
+    }
+  };
+
+  const handleRenameOption = async (id: string, currentValue: string) => {
+    const nextValue = window.prompt('Rename this option:', currentValue)?.trim();
+    if (!nextValue || nextValue === currentValue) return;
+
+    try {
+      setBusyOptionKey(id);
+      await renameFilterOption(id, nextValue);
+      await loadFilterSection();
+    } catch (renameError) {
+      alert(renameError instanceof Error ? renameError.message : 'Failed to rename filter option.');
+    } finally {
+      setBusyOptionKey(null);
+    }
+  };
+
+  const handleDeleteOption = async (id: string, value: string) => {
+    if (!window.confirm(`Remove "${value}" from the upload options? Chants already using it keep their value.`)) {
+      return;
+    }
+
+    try {
+      setBusyOptionKey(id);
+      await deleteFilterOption(id);
+      await loadFilterSection();
+    } catch (deleteError) {
+      alert(deleteError instanceof Error ? deleteError.message : 'Failed to delete filter option.');
+    } finally {
+      setBusyOptionKey(null);
+    }
   };
 
   const handleToggleAdmin = async (userId: string, nextAdminState: boolean) => {
@@ -262,6 +349,135 @@ export default function AdminPage({ onNavigate }: Props) {
                 <div style={{ color: 'var(--text-muted)' }}>No suggestions have been submitted yet.</div>
               )}
             </div>
+          </section>
+
+          <section className="card" style={{ padding: 18, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ fontSize: '1.35rem', marginBottom: 6 }}>Upload Filter Options</h2>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                  Manage the selections available in the chant upload form. Renaming or removing an option
+                  does not change chants that already use it.
+                </p>
+              </div>
+            </div>
+
+            {filterOptionsError ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '1rem 1.25rem',
+                  borderRadius: 16,
+                  border: '1px solid rgba(127, 29, 29, 0.18)',
+                  background: 'rgba(127, 29, 29, 0.08)',
+                  color: 'var(--burgundy)',
+                }}
+              >
+                {filterOptionsError}
+              </div>
+            ) : !filterOptions ? (
+              <p style={{ color: 'var(--text-muted)', margin: '12px 0 0' }}>Loading filter options...</p>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gap: 16,
+                  marginTop: 14,
+                }}
+              >
+                {FILTER_CATEGORIES.map((category) => (
+                  <div
+                    key={category}
+                    style={{
+                      border: '1px solid var(--border-light)',
+                      borderRadius: 16,
+                      padding: 16,
+                      background: 'var(--bg-secondary)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontWeight: 700 }}>{FILTER_CATEGORY_LABELS[category]}</div>
+                      <span className="badge badge-outline">{filterOptions[category].length}</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                      {filterOptions[category].length > 0 ? (
+                        filterOptions[category].map((option) => (
+                          <div
+                            key={option.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '6px 10px',
+                              borderRadius: 10,
+                              background: 'var(--bg-surface)',
+                              border: '1px solid var(--border-light)',
+                            }}
+                          >
+                            <span style={{ fontSize: '0.92rem', color: 'var(--text-secondary)' }}>{option.value}</span>
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                disabled={busyOptionKey === option.id}
+                                onClick={() => void handleRenameOption(option.id, option.value)}
+                              >
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                disabled={busyOptionKey === option.id}
+                                onClick={() => void handleDeleteOption(option.id, option.value)}
+                                aria-label={`Remove ${option.value}`}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>
+                          No options yet. Add the first one below.
+                        </p>
+                      )}
+                    </div>
+
+                    <form
+                      style={{ display: 'flex', gap: 8 }}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleAddOption(category);
+                      }}
+                    >
+                      <input
+                        className="auth-input"
+                        type="text"
+                        placeholder="Add new option"
+                        value={newOptionValues[category]}
+                        onChange={(e) =>
+                          setNewOptionValues((current) => ({ ...current, [category]: e.target.value }))
+                        }
+                        style={{ flex: 1, minWidth: 0 }}
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-secondary btn-sm"
+                        disabled={busyOptionKey === `add-${category}` || !newOptionValues[category].trim()}
+                      >
+                        {busyOptionKey === `add-${category}` ? 'Adding...' : 'Add'}
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="card" style={{ padding: 18 }}>
