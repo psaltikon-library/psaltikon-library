@@ -295,7 +295,8 @@ function App() {
       {isLoading ? (
         <LoadingScreen key="loading" onComplete={() => setIsLoading(false)} />
       ) : (
-        <motion.div 
+        <motion.div
+          key="app"
           className="app"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
