@@ -201,25 +201,33 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentPage, selectedChantId, syncRoute]);
 
-  const navigateToChant = (chantId: string) => {
-    setSelectedChantId(chantId);
-    setCurrentPage('chant-detail');
-    syncRoute('chant-detail', chantId);
-    void recordChantView(chantId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Memoized so scroll-driven re-renders here don't hand every page a new
+  // callback identity, which would re-run child effects that depend on it.
+  const navigateToChant = useCallback(
+    (chantId: string) => {
+      setSelectedChantId(chantId);
+      setCurrentPage('chant-detail');
+      syncRoute('chant-detail', chantId);
+      void recordChantView(chantId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [syncRoute]
+  );
 
-  const navigateTo = (page: Page) => {
-    const nextChantId = page === 'chant-detail' ? selectedChantId : null;
-    setCurrentPage(page);
+  const navigateTo = useCallback(
+    (page: Page) => {
+      const nextChantId = page === 'chant-detail' ? selectedChantId : null;
+      setCurrentPage(page);
 
-    if (page !== 'chant-detail') {
-      setSelectedChantId(null);
-    }
+      if (page !== 'chant-detail') {
+        setSelectedChantId(null);
+      }
 
-    syncRoute(page, nextChantId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+      syncRoute(page, nextChantId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [selectedChantId, syncRoute]
+  );
 
   const renderPage = () => {
     switch (currentPage) {

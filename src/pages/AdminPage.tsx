@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Page } from '../types';
@@ -79,6 +79,12 @@ export default function AdminPage({ onNavigate }: Props) {
     await loadFilterSection();
   };
 
+  // Keep the latest onNavigate reachable without making it an effect
+  // dependency: it is a fresh function on every App render, and App re-renders
+  // on scroll, which would otherwise refetch the whole dashboard mid-scroll.
+  const onNavigateRef = useRef(onNavigate);
+  onNavigateRef.current = onNavigate;
+
   useEffect(() => {
     const ok = localStorage.getItem('psaltikon_admin_authed') === 'true';
     setIsAuthorized(ok);
@@ -91,12 +97,14 @@ export default function AdminPage({ onNavigate }: Props) {
     void syncCurrentUser();
 
     if (!ok) {
-      onNavigate('home');
+      onNavigateRef.current('home');
       return;
     }
 
     void loadDashboard();
-  }, [onNavigate]);
+    // Runs once on mount — the dashboard is refreshed explicitly via Refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('psaltikon_admin_authed');
