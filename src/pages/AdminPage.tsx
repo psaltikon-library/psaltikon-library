@@ -46,6 +46,7 @@ export default function AdminPage({ onNavigate }: Props) {
     language: '',
   });
   const [busyOptionKey, setBusyOptionKey] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<FilterCategory>(FILTER_CATEGORIES[0]);
 
   const loadFilterSection = async () => {
     setFilterOptionsError('');
@@ -386,104 +387,100 @@ export default function AdminPage({ onNavigate }: Props) {
             ) : !filterOptions ? (
               <p style={{ color: 'var(--text-muted)', margin: '12px 0 0' }}>Loading filter options...</p>
             ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                  gap: 16,
-                  marginTop: 14,
-                }}
-              >
-                {FILTER_CATEGORIES.map((category) => (
-                  <div
-                    key={category}
-                    style={{
-                      border: '1px solid var(--border-light)',
-                      borderRadius: 16,
-                      padding: 16,
-                      background: 'var(--bg-secondary)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10,
+              <div className="filter-manager">
+                <nav className="filter-manager__sidebar" aria-label="Filter categories">
+                  {FILTER_CATEGORIES.map((category) => {
+                    const isActive = category === selectedCategory;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        className={`filter-manager__tab${isActive ? ' is-active' : ''}`}
+                        aria-current={isActive ? 'true' : undefined}
+                        onClick={() => setSelectedCategory(category)}
+                      >
+                        <span>{FILTER_CATEGORY_LABELS[category]}</span>
+                        <span className="filter-manager__count">{filterOptions[category].length}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <div className="filter-manager__panel">
+                  <div className="filter-manager__panel-head">
+                    <h3 className="filter-manager__panel-title">
+                      {FILTER_CATEGORY_LABELS[selectedCategory]}
+                    </h3>
+                    <span className="badge badge-outline">
+                      {filterOptions[selectedCategory].length}{' '}
+                      {filterOptions[selectedCategory].length === 1 ? 'option' : 'options'}
+                    </span>
+                  </div>
+
+                  <div className="filter-manager__list">
+                    {filterOptions[selectedCategory].length > 0 ? (
+                      filterOptions[selectedCategory].map((option) => (
+                        <div className="filter-manager__row" key={option.id}>
+                          <span className="filter-manager__value">{option.value}</span>
+                          <div className="filter-manager__row-actions">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={busyOptionKey === option.id}
+                              onClick={() => void handleRenameOption(option.id, option.value)}
+                            >
+                              Rename
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={busyOptionKey === option.id}
+                              onClick={() => void handleDeleteOption(option.id, option.value)}
+                              aria-label={`Remove ${option.value}`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="filter-manager__empty">
+                        No options yet. Add the first one below.
+                      </p>
+                    )}
+                  </div>
+
+                  <form
+                    className="filter-manager__add"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void handleAddOption(selectedCategory);
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                      <div style={{ fontWeight: 700 }}>{FILTER_CATEGORY_LABELS[category]}</div>
-                      <span className="badge badge-outline">{filterOptions[category].length}</span>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
-                      {filterOptions[category].length > 0 ? (
-                        filterOptions[category].map((option) => (
-                          <div
-                            key={option.id}
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              gap: 8,
-                              padding: '6px 10px',
-                              borderRadius: 10,
-                              background: 'var(--bg-surface)',
-                              border: '1px solid var(--border-light)',
-                            }}
-                          >
-                            <span style={{ fontSize: '0.92rem', color: 'var(--text-secondary)' }}>{option.value}</span>
-                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                disabled={busyOptionKey === option.id}
-                                onClick={() => void handleRenameOption(option.id, option.value)}
-                              >
-                                Rename
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                disabled={busyOptionKey === option.id}
-                                onClick={() => void handleDeleteOption(option.id, option.value)}
-                                aria-label={`Remove ${option.value}`}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>
-                          No options yet. Add the first one below.
-                        </p>
-                      )}
-                    </div>
-
-                    <form
-                      style={{ display: 'flex', gap: 8 }}
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void handleAddOption(category);
-                      }}
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder={`Add a new ${FILTER_CATEGORY_LABELS[selectedCategory].toLowerCase()} option`}
+                      value={newOptionValues[selectedCategory]}
+                      onChange={(e) =>
+                        setNewOptionValues((current) => ({
+                          ...current,
+                          [selectedCategory]: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-sm"
+                      disabled={
+                        busyOptionKey === `add-${selectedCategory}` ||
+                        !newOptionValues[selectedCategory].trim()
+                      }
                     >
-                      <input
-                        className="auth-input"
-                        type="text"
-                        placeholder="Add new option"
-                        value={newOptionValues[category]}
-                        onChange={(e) =>
-                          setNewOptionValues((current) => ({ ...current, [category]: e.target.value }))
-                        }
-                        style={{ flex: 1, minWidth: 0 }}
-                      />
-                      <button
-                        type="submit"
-                        className="btn btn-secondary btn-sm"
-                        disabled={busyOptionKey === `add-${category}` || !newOptionValues[category].trim()}
-                      >
-                        {busyOptionKey === `add-${category}` ? 'Adding...' : 'Add'}
-                      </button>
-                    </form>
-                  </div>
-                ))}
+                      {busyOptionKey === `add-${selectedCategory}` ? 'Adding...' : 'Add'}
+                    </button>
+                  </form>
+                </div>
               </div>
             )}
           </section>

@@ -3162,6 +3162,174 @@ a:hover {
   color: var(--text-muted);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN — FILTER OPTIONS MANAGER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.filter-manager {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.filter-manager__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--bg-secondary);
+}
+
+.filter-manager__tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.filter-manager__tab:hover {
+  background: rgba(139, 38, 53, 0.06);
+  color: var(--burgundy);
+}
+
+.filter-manager__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.16);
+}
+
+.filter-manager__tab.is-active {
+  background: var(--burgundy);
+  color: var(--text-inverse);
+}
+
+.filter-manager__count {
+  flex-shrink: 0;
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.filter-manager__tab.is-active .filter-manager__count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.filter-manager__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--bg-secondary);
+}
+
+.filter-manager__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.filter-manager__panel-title {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.filter-manager__list {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.filter-manager__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+.filter-manager__value {
+  min-width: 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.filter-manager__row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.filter-manager__empty {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.filter-manager__add {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.filter-manager__add .auth-input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .filter-manager {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-manager__sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+  }
+
+  .filter-manager__tab {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
 /* PDF file tabs — shown when a chant has more than one PDF */
 .pdf-file-tabs {
   display: flex;
