@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
+import {
+  DEFAULT_FILTER_OPTIONS,
+  FilterCategory,
+  loadFilterValues,
+} from "../utils/filterOptions";
+import {
+  ChantPdfRow,
+  addChantPdfs,
+  deleteChantPdfs,
+  labelFromFileName,
+  loadChantPdfs,
+} from "../utils/chantPdfs";
+
+// Ensure a select can still display a stored value that is no longer an option.
+const withCurrent = (values: string[], current: string) =>
+  current && !values.includes(current) ? [current, ...values] : values;
 
 type UploadChantModalProps = {
   open: boolean;
@@ -21,19 +37,18 @@ export default function UploadChantModal({
   const [part, setPart] = useState("");
   const [tone, setTone] = useState("");
   const [language, setLanguage] = useState("");
-  const [hasPhonetics, setHasPhonetics] = useState(false);
-  const [phoneticsTextFile, setPhoneticsTextFile] = useState<File | null>(null);
-  const [phoneticsTextInput, setPhoneticsTextInput] = useState("");
-  const [useTypedPhoneticsText, setUseTypedPhoneticsText] = useState(false);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
+  const [existingPdfs, setExistingPdfs] = useState<ChantPdfRow[]>([]);
+  const [removedPdfIds, setRemovedPdfIds] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filterValues, setFilterValues] =
+    useState<Record<FilterCategory, string[]>>(DEFAULT_FILTER_OPTIONS);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const phoneticsFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isEditing = !!initialChant?.id;
-  const languageRequiresPhonetics = language === "Arabic Phonetics" || language === "Greek Phonetics";
-
+  const keptPdfs = existingPdfs.filter((row) => !removedPdfIds.includes(row.id));
+  const totalPdfCount = keptPdfs.length + pdfFiles.length;
 
   const resetForm = () => {
     setTitle(initialChant?.title || "");
@@ -42,18 +57,12 @@ export default function UploadChantModal({
     setPart(initialChant?.part || "");
     setTone(initialChant?.tone || "");
     setLanguage(initialChant?.language || "");
-    const initialLanguage = initialChant?.language || "";
-    setHasPhonetics(
-      !!initialChant?.has_phonetics ||
-      initialLanguage === "Arabic Phonetics" ||
-      initialLanguage === "Greek Phonetics"
-    );
-    setPhoneticsTextFile(null);
-    setPhoneticsTextInput("");
-    setUseTypedPhoneticsText(false);
-    setPdfFile(null);
+    setPdfFiles([]);
+    setExistingPdfs([]);
+    setRemovedPdfIds([]);
     setIsSubmitting(false);
   };
+
   const buildPdfPath = (file: File, chantTitle: string) => {
     const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
     const safeTitle = chantTitle
@@ -70,32 +79,33 @@ export default function UploadChantModal({
     return `chants/${uniqueId}-${safeTitle || "untitled"}.${extension}`;
   };
 
-  const applyPdfFile = (file: File | null) => {
-    if (!file) return;
+  const applyPdfFiles = (files: FileList | File[] | null) => {
+    if (!files) return;
 
-    if (file.type !== "application/pdf") {
-      alert("Please upload a PDF file only.");
-      return;
+    const incoming = Array.from(files);
+    const pdfs = incoming.filter((file) => file.type === "application/pdf");
+
+    if (pdfs.length < incoming.length) {
+      alert("Only PDF files can be added. Non-PDF files were skipped.");
     }
 
-    setPdfFile(file);
+    if (!pdfs.length) return;
+
+    setPdfFiles((current) => {
+      const seen = new Set(current.map((file) => `${file.name}:${file.size}`));
+      const additions = pdfs.filter((file) => !seen.has(`${file.name}:${file.size}`));
+      return [...current, ...additions];
+    });
   };
 
-  const applyPhoneticsTextFile = (file: File | null) => {
-    if (!file) return;
+  const removePendingFile = (index: number) => {
+    setPdfFiles((current) => current.filter((_, i) => i !== index));
+  };
 
-    const isTextFile =
-      file.type === "text/plain" ||
-      file.name.toLowerCase().endsWith(".txt");
-
-    if (!isTextFile) {
-      alert("Please upload a text (.txt) file only.");
-      return;
-    }
-
-    setPhoneticsTextFile(file);
-    setUseTypedPhoneticsText(false);
-    setPhoneticsTextInput("");
+  const toggleExistingPdfRemoval = (id: string) => {
+    setRemovedPdfIds((current) =>
+      current.includes(id) ? current.filter((rowId) => rowId !== id) : [...current, id]
+    );
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -111,16 +121,7 @@ export default function UploadChantModal({
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragOver(false);
-    applyPdfFile(e.dataTransfer.files?.[0] || null);
-  };
-
-  const handlePhoneticsDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handlePhoneticsDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    applyPhoneticsTextFile(e.dataTransfer.files?.[0] || null);
+    applyPdfFiles(e.dataTransfer.files);
   };
 
   useEffect(() => {
@@ -136,16 +137,62 @@ export default function UploadChantModal({
   }, [open, initialChant]);
 
   useEffect(() => {
-    if (languageRequiresPhonetics) {
-      setHasPhonetics(true);
-      return;
-    }
+    if (!open) return;
 
-    setHasPhonetics(false);
-    setPhoneticsTextFile(null);
-    setPhoneticsTextInput("");
-    setUseTypedPhoneticsText(false);
-  }, [languageRequiresPhonetics]);
+    let isActive = true;
+    void loadFilterValues().then((values) => {
+      if (isActive) setFilterValues(values);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [open]);
+
+  // Load the chant's existing PDFs when editing. Falls back to the chant's own
+  // pdf_path when the chant_pdfs table is unavailable or has no rows yet.
+  useEffect(() => {
+    if (!open || !initialChant?.id) return;
+
+    let isActive = true;
+
+    const load = async () => {
+      try {
+        const rows = await loadChantPdfs(initialChant.id);
+        if (!isActive) return;
+
+        if (rows.length > 0) {
+          setExistingPdfs(rows);
+          return;
+        }
+      } catch {
+        // fall through to the single-path fallback below
+      }
+
+      if (!isActive) return;
+
+      const legacyPath = initialChant?.pdf_path;
+      setExistingPdfs(
+        legacyPath
+          ? [
+              {
+                id: `legacy:${legacyPath}`,
+                chant_id: initialChant.id,
+                pdf_path: legacyPath,
+                label: null,
+                sort_order: 0,
+              },
+            ]
+          : []
+      );
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [open, initialChant]);
 
   useEffect(() => {
     if (!open) return;
@@ -157,7 +204,6 @@ export default function UploadChantModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,75 +225,44 @@ export default function UploadChantModal({
       return;
     }
 
-    let phoneticsStoragePath: string | null = initialChant?.phonetics_text || null;
-
-    if (!isEditing && !pdfFile) {
-      alert("Please upload a PDF file.");
-      return;
-    }
-
-    const hasTypedPhoneticsText = useTypedPhoneticsText && phoneticsTextInput.trim().length > 0;
-
-    if ((hasPhonetics || languageRequiresPhonetics) &&
-      !isEditing &&
-      !phoneticsTextFile &&
-      !hasTypedPhoneticsText
-    ) {
-      alert("Please upload a phonetics text file or enter phonetics text.");
+    if (totalPdfCount === 0) {
+      alert("Please add at least one PDF.");
       return;
     }
 
     setIsSubmitting(true);
 
-    let pdfPath = initialChant?.pdf_path || null;
-    let newlyUploadedPath: string | null = null;
-    let newlyUploadedPhoneticsPath: string | null = null;
+    // Upload every newly added PDF; roll them back if anything later fails.
+    const uploadedPaths: string[] = [];
 
-    if (pdfFile) {
-      pdfPath = buildPdfPath(pdfFile, trimmedTitle);
-      newlyUploadedPath = pdfPath;
+    for (const file of pdfFiles) {
+      const path = buildPdfPath(file, trimmedTitle);
 
       const { error: uploadError } = await supabase.storage
         .from("chant-pdfs")
-        .upload(pdfPath, pdfFile, {
-          contentType: "application/pdf",
-          upsert: false,
-        });
+        .upload(path, file, { contentType: "application/pdf", upsert: false });
 
       if (uploadError) {
+        if (uploadedPaths.length) {
+          await supabase.storage.from("chant-pdfs").remove(uploadedPaths);
+        }
         setIsSubmitting(false);
         alert(uploadError.message || "Failed to upload PDF.");
         return;
       }
+
+      uploadedPaths.push(path);
     }
-    if ((hasPhonetics || languageRequiresPhonetics) && (phoneticsTextFile || hasTypedPhoneticsText)) {
-      const phoneticsFileName = phoneticsTextFile
-        ? phoneticsTextFile.name
-        : `${trimmedTitle || "chant"}-phonetics.txt`;
 
-      const phoneticsFileToUpload = phoneticsTextFile
-        ? phoneticsTextFile
-        : new File([phoneticsTextInput], phoneticsFileName, { type: "text/plain" });
-
-      phoneticsStoragePath = buildPdfPath(phoneticsFileToUpload, `${trimmedTitle}-phonetics`);
-      newlyUploadedPhoneticsPath = phoneticsStoragePath;
-
-      const { error: phoneticsUploadError } = await supabase.storage
-        .from("phonetic_files")
-        .upload(phoneticsStoragePath, phoneticsFileToUpload, {
-          contentType: "text/plain",
-          upsert: false,
-        });
-
-      if (phoneticsUploadError) {
-        if (newlyUploadedPath) {
-          await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
-        }
-        setIsSubmitting(false);
-        alert(phoneticsUploadError.message || "Failed to upload phonetics text file.");
-        return;
+    const rollbackUploads = async () => {
+      if (uploadedPaths.length) {
+        await supabase.storage.from("chant-pdfs").remove(uploadedPaths);
       }
-    }
+    };
+
+    // The first remaining PDF stays on chants.pdf_path so booklets and older
+    // clients keep working.
+    const primaryPdfPath = keptPdfs[0]?.pdf_path || uploadedPaths[0] || null;
 
     const payload = {
       title: trimmedTitle,
@@ -258,27 +273,13 @@ export default function UploadChantModal({
       part: part || null,
       language: language || null,
       composer: initialChant?.composer || null,
-      pdf_path: pdfPath,
+      pdf_path: primaryPdfPath,
       uploaded_by: initialChant?.uploaded_by || user.id,
-      has_phonetics: hasPhonetics || languageRequiresPhonetics,
-      phonetics_text:
-        hasPhonetics || languageRequiresPhonetics
-          ? phoneticsStoragePath
-          : initialChant?.phonetics_text || null,
       status: initialChant?.status || "pending",
     };
 
-    if (!payload.pdf_path) {
-      setIsSubmitting(false);
-      alert("Please upload a PDF file.");
-      return;
-    }
-
-    if ((hasPhonetics || languageRequiresPhonetics) && !payload.phonetics_text) {
-      setIsSubmitting(false);
-      alert("Please upload a phonetics text file.");
-      return;
-    }
+    const nextSortOrderStart =
+      keptPdfs.reduce((max, row) => Math.max(max, row.sort_order), -1) + 1;
 
     if (isEditing) {
       const { data, error } = await supabase
@@ -289,39 +290,60 @@ export default function UploadChantModal({
         .single();
 
       if (error) {
-        if (newlyUploadedPath) {
-          await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
-        }
-        if (newlyUploadedPhoneticsPath) {
-          await supabase.storage.from("phonetic_files").remove([newlyUploadedPhoneticsPath]);
-        }
+        await rollbackUploads();
         setIsSubmitting(false);
         alert(error.message || "Failed to update chant.");
         return;
       }
 
-      if (
-        newlyUploadedPath &&
-        initialChant?.pdf_path &&
-        initialChant.pdf_path !== newlyUploadedPath
-      ) {
-        await supabase.storage.from("chant-pdfs").remove([initialChant.pdf_path]);
+      if (uploadedPaths.length) {
+        try {
+          await addChantPdfs(
+            uploadedPaths.map((path, index) => ({
+              chant_id: initialChant.id,
+              pdf_path: path,
+              label: labelFromFileName(pdfFiles[index]?.name || ""),
+              sort_order: nextSortOrderStart + index,
+            }))
+          );
+        } catch (pdfError) {
+          await rollbackUploads();
+          setIsSubmitting(false);
+          alert(
+            pdfError instanceof Error
+              ? `${pdfError.message} (Has the 20260730 chant PDFs migration been run in Supabase?)`
+              : "Failed to register chant PDFs."
+          );
+          return;
+        }
       }
 
-      if (
-        newlyUploadedPhoneticsPath &&
-        initialChant?.phonetics_text &&
-        initialChant.phonetics_text !== newlyUploadedPhoneticsPath
-      ) {
-        await supabase.storage.from("phonetic_files").remove([initialChant.phonetics_text]);
+      // Remove the PDFs the admin unchecked: storage objects first, then rows.
+      const removedRows = existingPdfs.filter((row) => removedPdfIds.includes(row.id));
+
+      if (removedRows.length) {
+        await supabase.storage
+          .from("chant-pdfs")
+          .remove(removedRows.map((row) => row.pdf_path));
+
+        const realIds = removedRows
+          .filter((row) => !row.id.startsWith("legacy:"))
+          .map((row) => row.id);
+
+        try {
+          await deleteChantPdfs(realIds);
+        } catch (deleteError) {
+          alert(
+            deleteError instanceof Error
+              ? deleteError.message
+              : "Some PDFs could not be removed."
+          );
+        }
       }
 
       onSaved?.(data);
       setIsSubmitting(false);
-      setPdfFile(null);
-      setPhoneticsTextFile(null);
-      setPhoneticsTextInput("");
-      setUseTypedPhoneticsText(false);
+      setPdfFiles([]);
       onClose();
       return;
     }
@@ -333,23 +355,33 @@ export default function UploadChantModal({
       .single();
 
     if (insertError) {
-      if (newlyUploadedPath) {
-        await supabase.storage.from("chant-pdfs").remove([newlyUploadedPath]);
-      }
-      if (newlyUploadedPhoneticsPath) {
-        await supabase.storage.from("phonetic_files").remove([newlyUploadedPhoneticsPath]);
-      }
+      await rollbackUploads();
       setIsSubmitting(false);
       alert(insertError.message || "Failed to save chant data.");
       return;
     }
 
+    try {
+      await addChantPdfs(
+        uploadedPaths.map((path, index) => ({
+          chant_id: data.id,
+          pdf_path: path,
+          label: labelFromFileName(pdfFiles[index]?.name || ""),
+          sort_order: index,
+        }))
+      );
+    } catch (pdfError) {
+      // The chant row itself saved with its primary PDF, so keep it and warn.
+      alert(
+        pdfError instanceof Error
+          ? `Chant saved, but the additional PDFs could not be registered: ${pdfError.message} (Has the 20260730 chant PDFs migration been run in Supabase?)`
+          : "Chant saved, but the additional PDFs could not be registered."
+      );
+    }
+
     onSaved?.(data);
     setIsSubmitting(false);
-    setPdfFile(null);
-    setPhoneticsTextFile(null);
-    setPhoneticsTextInput("");
-    setUseTypedPhoneticsText(false);
+    setPdfFiles([]);
     onClose();
   };
 
@@ -384,8 +416,8 @@ export default function UploadChantModal({
                   <div className="auth-modal-title">{isEditing ? "Edit Chant" : "Upload a Chant"}</div>
                   <div className="auth-modal-subtitle">
                     {isEditing
-                      ? "Update chant metadata and optionally replace its PDF."
-                      : "Add chant metadata and upload its PDF."}
+                      ? "Update chant metadata and manage its PDFs."
+                      : "Add chant metadata and upload one or more PDFs."}
                   </div>
                 </div>
               </div>
@@ -423,26 +455,9 @@ export default function UploadChantModal({
                       onChange={(e) => setPart(e.target.value)}
                     >
                       <option value="">None</option>
-                      <option value="Apolytikion">Apolytikion</option>
-                      <option value="Kekregaria">Kekregaria</option>
-                      <option value="Aposticha">Aposticha</option>
-                      <option value="Doxastikon">Doxastikon</option>
-                      <option value="Theotokion">Theotokion</option>
-                      <option value="Praises">Praises</option>
-                      <option value="Katavasia">Katavasia</option>
-                      <option value="Kontakion">Kontakion</option>
-                      <option value="Troparion">Troparion</option>
-                      <option value="Stichera">Stichera</option>
-                      <option value="Theotokion">Theotokion</option>
-                      <option value="Cherubikon">Cherubikon</option>
-                      <option value="Doxology">Doxology</option>
-                      <option value="Megalynarion">Megalynarion</option>
-                      <option value="Koinonikon">Koinonikon</option>
-                      <option value="Polyeleos">Polyeleos</option>
-                      <option value="Anixantaria">Anixantaria</option>
-                      <option value="Alleluia">Alleluia</option>
-                      <option value="Trisagion">Trisagion</option>
-                      <option value="Psalm">Psalm</option>
+                      {withCurrent(filterValues.part, part).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -454,14 +469,9 @@ export default function UploadChantModal({
                       onChange={(e) => setTone(e.target.value)}
                     >
                       <option value="">None</option>
-                      <option value="Tone 1">Tone 1</option>
-                      <option value="Tone 2">Tone 2</option>
-                      <option value="Tone 3">Tone 3</option>
-                      <option value="Tone 4">Tone 4</option>
-                      <option value="Tone 5">Tone 5</option>
-                      <option value="Tone 6">Tone 6</option>
-                      <option value="Tone 7">Tone 7</option>
-                      <option value="Tone 8">Tone 8</option>
+                      {withCurrent(filterValues.tone, tone).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -473,13 +483,9 @@ export default function UploadChantModal({
                       onChange={(e) => setService(e.target.value)}
                     >
                       <option value="">None</option>
-                      <option value="Divine Liturgy">Divine Liturgy</option>
-                      <option value="Matins">Matins</option>
-                      <option value="Vespers">Vespers</option>
-                      <option value="Orthros">Orthros</option>
-                      <option value="Compline">Compline</option>
-                      <option value="Psalms">Psalms</option>
-                      <option value="Special">Special</option>
+                      {withCurrent(filterValues.service, service).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -491,11 +497,9 @@ export default function UploadChantModal({
                       onChange={(e) => setFeast(e.target.value)}
                     >
                       <option value="">None</option>
-                      <option value="Pascha">Pascha</option>
-                      <option value="Nativity">Nativity</option>
-                      <option value="Theophany">Theophany</option>
-                      <option value="Pentecost">Pentecost</option>
-                      <option value="Sunday">Sunday</option>
+                      {withCurrent(filterValues.feast, feast).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -507,28 +511,63 @@ export default function UploadChantModal({
                       onChange={(e) => setLanguage(e.target.value)}
                     >
                       <option value="">None</option>
-                      <option value="Arabic">Arabic</option>
-                      <option value="Arabic Phonetics">Arabic Phonetics</option>
-                      <option value="Greek">Greek</option>
-                      <option value="Greek Phonetics">Greek Phonetics</option>
-                      <option value="English">English</option>
-                      <option value="French">French</option>
+                      {withCurrent(filterValues.language, language).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
-                <div
-                  className="upload-chant-form__upload-field"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: hasPhonetics || languageRequiresPhonetics ? '1fr 1fr' : '1fr',
-                    gap: '1rem',
-                  }}
-                >
+                <div className="upload-chant-form__upload-field">
                   <div className="auth-field">
-                    <label className="auth-label">{isEditing ? "Replace PDF" : "Upload PDF *"}</label>
+                    <label className="auth-label">
+                      {isEditing ? "PDFs" : "Upload PDFs *"}
+                    </label>
+
+                    {(keptPdfs.length > 0 || removedPdfIds.length > 0 || pdfFiles.length > 0) && (
+                      <div className="chant-pdf-list">
+                        {existingPdfs.map((row) => {
+                          const isRemoved = removedPdfIds.includes(row.id);
+                          return (
+                            <div
+                              key={row.id}
+                              className={`chant-pdf-item${isRemoved ? " is-removed" : ""}`}
+                            >
+                              <span className="chant-pdf-item__name">
+                                {row.label || row.pdf_path.split("/").pop()}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => toggleExistingPdfRemoval(row.id)}
+                              >
+                                {isRemoved ? "Undo" : "Remove"}
+                              </button>
+                            </div>
+                          );
+                        })}
+
+                        {pdfFiles.map((file, index) => (
+                          <div className="chant-pdf-item is-new" key={`${file.name}-${file.size}-${index}`}>
+                            <span className="chant-pdf-item__name">
+                              {file.name}
+                              <span className="chant-pdf-item__tag">New</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => removePendingFile(index)}
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div
-                      className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${pdfFile ? " has-file" : ""}`}
+                      className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${totalPdfCount > 0 ? " has-file" : ""}`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -547,122 +586,25 @@ export default function UploadChantModal({
                         className="upload-dropzone__input"
                         type="file"
                         accept="application/pdf"
-                        onChange={(e) => applyPdfFile(e.target.files?.[0] || null)}
+                        multiple
+                        onChange={(e) => {
+                          applyPdfFiles(e.target.files);
+                          e.target.value = "";
+                        }}
                       />
 
                       <div className="upload-dropzone__icon">⇪</div>
                       <div className="upload-dropzone__title">
-                        {pdfFile
-                          ? pdfFile.name
-                          : isEditing
-                            ? "Drag & drop a new PDF here"
-                            : "Drag & drop a PDF here"}
+                        {totalPdfCount > 0
+                          ? `${totalPdfCount} PDF${totalPdfCount === 1 ? "" : "s"} attached — add more`
+                          : "Drag & drop PDFs here"}
                       </div>
                       <div className="upload-dropzone__subtitle">
-                        {pdfFile
-                          ? "PDF selected. Click to replace it."
-                          : isEditing
-                            ? "Leave empty to keep the current PDF, or click to browse your files"
-                            : "or click to browse your files"}
+                        You can select several files at once. The first PDF is used as the chant's
+                        primary score.
                       </div>
                     </div>
                   </div>
-
-                  {(hasPhonetics || languageRequiresPhonetics) && (
-                    <div className="auth-field">
-                      <label className="auth-label">{isEditing ? "Replace Phonetics Text File" : "Upload Phonetics Text File *"}</label>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.75rem',
-                          marginBottom: '0.65rem',
-                        }}
-                      >
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          Upload a .txt file or type the phonetics below
-                        </span>
-                        <label
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.45rem',
-                            fontSize: '0.85rem',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={useTypedPhoneticsText}
-                            onChange={(e) => {
-                              setUseTypedPhoneticsText(e.target.checked);
-                              if (e.target.checked) {
-                                setPhoneticsTextFile(null);
-                              } else {
-                                setPhoneticsTextInput("");
-                              }
-                            }}
-                          />
-                          Type instead
-                        </label>
-                      </div>
-                      {useTypedPhoneticsText ? (
-                        <textarea
-                          className="auth-input"
-                          value={phoneticsTextInput}
-                          onChange={(e) => setPhoneticsTextInput(e.target.value)}
-                          placeholder="Type or paste the phonetics text here"
-                          rows={10}
-                          style={{
-                            resize: 'vertical',
-                            minHeight: '220px',
-                            lineHeight: 1.5,
-                          }}
-                        />
-                      ) : (
-                        <div
-                          className={`upload-dropzone${phoneticsTextFile ? " has-file" : ""}`}
-                          onDragOver={handlePhoneticsDragOver}
-                          onDrop={handlePhoneticsDrop}
-                          onClick={() => phoneticsFileInputRef.current?.click()}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              phoneticsFileInputRef.current?.click();
-                            }
-                          }}
-                        >
-                          <input
-                            ref={phoneticsFileInputRef}
-                            className="upload-dropzone__input"
-                            type="file"
-                            accept=".txt,text/plain"
-                            onChange={(e) => applyPhoneticsTextFile(e.target.files?.[0] || null)}
-                          />
-
-                          <div className="upload-dropzone__icon">⇪</div>
-                          <div className="upload-dropzone__title">
-                            {phoneticsTextFile
-                              ? phoneticsTextFile.name
-                              : isEditing
-                                ? "Drag & drop a new phonetics text file here"
-                                : "Drag & drop a phonetics text file here"}
-                          </div>
-                          <div className="upload-dropzone__subtitle">
-                            {phoneticsTextFile
-                              ? "Phonetics text file selected. Click to replace it."
-                              : isEditing
-                                ? "Leave empty to keep the current phonetics text, or click to browse your files"
-                                : "or click to browse for a .txt file"}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { isChantSaved, saveChant, unsaveChant } from '../utils/savedChants';
 import { resolveChantWithDevFallback } from '../utils/chantFallback';
 import { recordChantView } from '../utils/analytics';
+import { ChantPdfRow, loadChantPdfs } from '../utils/chantPdfs';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -488,7 +489,50 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
   const chantTitle = chant?.title || 'Chant';
   const hasChant = !!chant;
 
-  const pdfPath = resolveChantPdfPath(chant);
+  const primaryPdfPath = resolveChantPdfPath(chant);
+
+  // A chant can have several PDFs. Fall back to the chant's own pdf_path when
+  // the chant_pdfs table is unavailable or has no rows for this chant.
+  const [chantPdfs, setChantPdfs] = useState<ChantPdfRow[]>([]);
+  const [selectedPdfIndex, setSelectedPdfIndex] = useState(0);
+
+  useEffect(() => {
+    if (!chantId) {
+      setChantPdfs([]);
+      return;
+    }
+
+    let isActive = true;
+    setSelectedPdfIndex(0);
+
+    const load = async () => {
+      try {
+        const rows = await loadChantPdfs(chantId);
+        if (isActive) setChantPdfs(rows);
+      } catch {
+        if (isActive) setChantPdfs([]);
+      }
+    };
+
+    void load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [chantId]);
+
+  const pdfEntries: Array<{ path: string; label: string }> =
+    chantPdfs.length > 0
+      ? chantPdfs.map((row, index) => ({
+          path: row.pdf_path,
+          label: row.label || row.pdf_path.split('/').pop() || `PDF ${index + 1}`,
+        }))
+      : primaryPdfPath
+        ? [{ path: primaryPdfPath, label: `${chantTitle}.pdf` }]
+        : [];
+
+  const activeEntry = pdfEntries[selectedPdfIndex] || pdfEntries[0] || null;
+  const pdfPath = activeEntry?.path || '';
 
   const [pdfSource, setPdfSource] = useState('');
 
@@ -812,7 +856,9 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
         transition={{ duration: 0.6, delay: 0.4 }}
       >
         <div className="pdf-viewer-header pdf-viewer-header--with-toolbar">
-          <span className="pdf-viewer-title">📄 {chantTitle}.pdf</span>
+          <span className="pdf-viewer-title">
+            📄 {activeEntry?.label || `${chantTitle}.pdf`}
+          </span>
           {hasPdf ? (
             <div className="pdf-viewer-header-toolbar-wrap">
               <PdfToolbar
@@ -835,6 +881,23 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
             </div>
           ) : null}
         </div>
+
+        {pdfEntries.length > 1 && (
+          <div className="pdf-file-tabs" role="tablist" aria-label="Chant PDFs">
+            {pdfEntries.map((entry, index) => (
+              <button
+                key={`${entry.path}-${index}`}
+                type="button"
+                role="tab"
+                aria-selected={index === selectedPdfIndex}
+                className={`pdf-file-tab${index === selectedPdfIndex ? ' is-active' : ''}`}
+                onClick={() => setSelectedPdfIndex(index)}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Viewer inside pdf-viewer-content */}
         <div className="pdf-viewer-content pdf-viewer-content--padded">
@@ -867,19 +930,6 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
           )}
         </div>
       </motion.div>
-
-      {/* Phonetics Section (if available) */}
-      {chant.hasPhonetics && chant.phoneticsText && (
-        <motion.div
-          style={{ marginTop: '2rem' }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-        >
-          <h3 style={{ marginBottom: '1rem' }}>Phonetic Transliteration</h3>
-          <div className="transliteration-text">{chant.phoneticsText}</div>
-        </motion.div>
-      )}
 
       {/* Related Chants */}
       <motion.div
