@@ -1,8 +1,7 @@
-import { motion, MotionConfig, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
-import toneWheelImg from '../assets/tone-wheel.jpg';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { getSavedChantIds } from '../utils/savedChants';
@@ -92,16 +91,12 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   const heroRef = useRef<HTMLDivElement>(null);
-  const prefersReduced = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
   });
 
-  // Scroll-linked hero choreography: the wheel drifts up, grows, and dims as the reader descends.
-  const wheelY = useTransform(scrollYProgress, [0, 1], ['0%', '-18%']);
-  const wheelScale = useTransform(scrollYProgress, [0, 1], [1, 1.25]);
-  const wheelOpacity = useTransform(scrollYProgress, [0, 0.85], [1, 0]);
+  // Scroll-linked hero choreography: content dims and drifts as the reader descends.
   const contentOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
   const contentY = useTransform(scrollYProgress, [0, 1], ['0%', '22%']);
 
@@ -140,12 +135,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
       className: 'bento-d',
       featured: false,
     },
-  ];
-
-  const heroStats = [
-    { value: '500+', label: 'Chants' },
-    { value: '8', label: 'Tones' },
-    { value: '12', label: 'Feasts' },
   ];
 
   const collections = [
@@ -217,33 +206,9 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
     <MotionConfig reducedMotion="user">
       {/* ── Hero ── */}
       <section className="hero" ref={heroRef}>
-        {/* Knocks the scanned wheel's white paper to transparent so the cream hero shows through */}
-        <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-          <filter id="hero-wheel-ink" colorInterpolationFilters="sRGB">
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 0.176  0 0 0 0 0.149  0 0 0 0 0.129  -0.299 -0.587 -0.114 0 1"
-            />
-          </filter>
-        </svg>
-
-        <div className="hero-aura" aria-hidden="true" />
-
-        <motion.div
-          className="hero-wheel-layer"
-          style={{ y: wheelY, scale: wheelScale, opacity: wheelOpacity }}
-          aria-hidden="true"
-        >
-          <motion.div
-            className="hero-wheel-spin"
-            animate={prefersReduced ? undefined : { rotate: 360 }}
-            transition={{ repeat: Infinity, ease: 'linear', duration: 160 }}
-          >
-            <img className="hero-wheel" src={toneWheelImg} alt="" aria-hidden="true" />
-          </motion.div>
-        </motion.div>
-
-        <div className="hero-grain" aria-hidden="true" />
+        <div className="hero-background" aria-hidden="true">
+          <div className="hero-gradient" />
+        </div>
 
         <motion.div className="hero-content" style={{ opacity: contentOpacity, y: contentY }}>
           <motion.p
@@ -291,19 +256,15 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
             </button>
           </motion.div>
 
-          <motion.div
-            className="hero-stats"
+          <motion.p
+            className="hero-stats-inline"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.65 }}
           >
-            {heroStats.map((stat) => (
-              <div className="hero-stat" key={stat.label}>
-                <span className="hero-stat-value">{stat.value}</span>
-                <span className="hero-stat-label">{stat.label}</span>
-              </div>
-            ))}
-          </motion.div>
+            500+ chants<span className="hero-stats-mark">✦</span>8 tones
+            <span className="hero-stats-mark">✦</span>12 feasts
+          </motion.p>
         </motion.div>
 
         <motion.div
