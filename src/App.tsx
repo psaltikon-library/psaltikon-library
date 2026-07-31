@@ -240,8 +240,9 @@ function App() {
         );
       case 'library':
         return (
-          <LibraryPage 
+          <LibraryPage
             onViewChant={navigateToChant}
+            onNavigate={navigateTo}
           />
         );
       case 'chant-detail':

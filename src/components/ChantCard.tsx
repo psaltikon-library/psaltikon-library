@@ -14,6 +14,9 @@ interface ChantCardProps {
   isSaved?: boolean;
   showSaveButton?: boolean;
   index?: number;
+  /** When provided, the booklet button toggles this chant in the booklet selection. */
+  onToggleBooklet?: (id: string) => void;
+  isInBooklet?: boolean;
 }
 
 const getMartyriaForTone = (tone?: string | null) => {
@@ -98,7 +101,7 @@ const getMartyriaForTone = (tone?: string | null) => {
   return '𝄞';
 };
 
-const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = true, index = 0 }: ChantCardProps) => {
+const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = true, index = 0, onToggleBooklet, isInBooklet = false }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [status, setStatus] = useState(((chant as any).status || 'pending').toString().toLowerCase());
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -371,16 +374,27 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
           </motion.button>
         )}
         <motion.button
-          className="btn btn-secondary btn-sm"
+          className={`btn btn-sm ${isInBooklet ? 'btn-primary' : 'btn-secondary'}`}
           onClick={(e) => {
             e.stopPropagation();
+            if (onToggleBooklet) {
+              onToggleBooklet(chant.id);
+              return;
+            }
             handleComingSoon('Booklet');
           }}
+          aria-pressed={onToggleBooklet ? isInBooklet : undefined}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          + Booklet
-          <span className="coming-soon-badge">Soon</span>
+          {onToggleBooklet ? (
+            isInBooklet ? '✓ In Booklet' : '+ Booklet'
+          ) : (
+            <>
+              + Booklet
+              <span className="coming-soon-badge">Soon</span>
+            </>
+          )}
         </motion.button>
         {isAdmin && (
           <motion.button

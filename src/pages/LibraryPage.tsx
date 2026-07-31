@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
+import BookletBuilderModal from "../components/BookletBuilderModal";
 import { supabase } from "../lib/supabase";
-import { Chant } from "../types";
+import { Chant, Page } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
 import { getSavedChantIds } from "../utils/savedChants";
 import { compareFilterValues } from "../utils/filterOptions";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
+  onNavigate?: (page: Page) => void;
 }
 
 const buildFilterOptions = (chants: Chant[]) => {
@@ -34,7 +36,7 @@ const buildFilterOptions = (chants: Chant[]) => {
   };
 };
 
-const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
+const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingChant, setEditingChant] = useState<Chant | null>(null);
@@ -57,6 +59,18 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState("");
   const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
+
+  // Booklet selection: chant ids in the order they were picked.
+  const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
+  const [bookletModalOpen, setBookletModalOpen] = useState(false);
+
+  const toggleBookletChant = (chantId: string) => {
+    setBookletChantIds((current) =>
+      current.includes(chantId)
+        ? current.filter((id) => id !== chantId)
+        : [...current, chantId]
+    );
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeast, setSelectedFeast] = useState("All Feasts");
@@ -501,7 +515,6 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               }}
             >
               📚 Booklet Builder
-              <span className="coming-soon-badge">Soon</span>
             </h4>
             <p
               style={{
@@ -513,13 +526,14 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
               Select chants to create a custom service booklet
             </p>
             <motion.button
-              className="btn btn-secondary btn-sm"
+              className={`btn btn-sm ${bookletChantIds.length > 0 ? "btn-primary" : "btn-secondary"}`}
               style={{ width: "100%" }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => alert("Booklet Builder coming soon!")}
+              onClick={() => setBookletModalOpen(true)}
             >
-              0 chants selected
+              {bookletChantIds.length}{" "}
+              {bookletChantIds.length === 1 ? "chant" : "chants"} selected
             </motion.button>
           </motion.div>
         </motion.aside>
@@ -662,6 +676,8 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
                     onUnsave={handleUnsavedChantId}
                     showSaveButton={true}
                     index={index}
+                    onToggleBooklet={toggleBookletChant}
+                    isInBooklet={bookletChantIds.includes(chant.id)}
                   />
                 ))}
               </motion.div>
@@ -714,6 +730,19 @@ const LibraryPage = ({ onViewChant }: LibraryPageProps) => {
           setEditingChant(null);
         }}
         onSaved={handleSavedChant}
+      />
+
+      <BookletBuilderModal
+        open={bookletModalOpen}
+        onClose={() => setBookletModalOpen(false)}
+        selectedChants={bookletChantIds
+          .map((id) => chants.find((chant) => chant.id === id))
+          .filter((chant): chant is Chant => !!chant)}
+        onRemoveChant={(id) =>
+          setBookletChantIds((current) => current.filter((chantId) => chantId !== id))
+        }
+        onClearSelection={() => setBookletChantIds([])}
+        onNavigate={onNavigate}
       />
     </>
   );
