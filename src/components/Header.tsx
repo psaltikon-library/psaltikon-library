@@ -49,7 +49,6 @@ const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: Heade
     { page: "library", label: "Library" },
     { page: "booklets", label: "Booklets" },
     { page: "compositions", label: "Compositions" },
-    { page: "sources", label: "Sources" },
     { page: "about", label: "About" },
   ];
 
