@@ -8,6 +8,7 @@ import ChantDetailPage from './pages/ChantDetailPage';
 import PhoneticsPage from './pages/PhoneticsPage';
 import BookletsPage from './pages/BookletsPage';
 import CompositionsPage from './pages/CompositionsPage';
+import SourcesPage from './pages/SourcesPage';
 import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import SavedItemsPage from './pages/SavedItemsPage';
@@ -25,6 +26,7 @@ const validPages: Page[] = [
   'phonetics',
   'booklets',
   'compositions',
+  'sources',
   'about',
   'admin',
   'saved-items',
@@ -269,6 +271,8 @@ function App() {
             onViewChant={navigateToChant}
           />
         );
+      case 'sources':
+        return <SourcesPage />;
       case 'about':
         return (
           <AboutPage />
