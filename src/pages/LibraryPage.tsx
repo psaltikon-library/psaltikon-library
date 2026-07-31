@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
 import BookletBuilderModal from "../components/BookletBuilderModal";
+import AuthModal from "../components/AuthModal";
 import { supabase } from "../lib/supabase";
 import { Chant, Page } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
@@ -63,6 +64,8 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
   // Booklet selection: chant ids in the order they were picked.
   const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
   const [bookletModalOpen, setBookletModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 
   const toggleBookletChant = (chantId: string) => {
     setBookletChantIds((current) =>
@@ -743,6 +746,19 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
         }
         onClearSelection={() => setBookletChantIds([])}
         onNavigate={onNavigate}
+        onRequestLogin={() => {
+          setAuthMode("login");
+          setAuthModalOpen(true);
+        }}
+      />
+
+      {/* Rendered after the builder so it stacks above it; the builder picks up
+          the new session itself via onAuthStateChange. */}
+      <AuthModal
+        open={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSwitchMode={setAuthMode}
       />
     </>
   );

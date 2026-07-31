@@ -12,6 +12,8 @@ type Props = {
   onRemoveChant: (id: string) => void;
   onClearSelection: () => void;
   onNavigate?: (page: Page) => void;
+  /** Opens the sign-in modal; the builder refreshes itself once auth changes. */
+  onRequestLogin?: () => void;
 };
 
 /**
@@ -25,6 +27,7 @@ export default function BookletBuilderModal({
   onRemoveChant,
   onClearSelection,
   onNavigate,
+  onRequestLogin,
 }: Props) {
   const [isAuthed, setIsAuthed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -41,7 +44,6 @@ export default function BookletBuilderModal({
 
     const load = async () => {
       setLoadingBooklets(true);
-      setNotice(null);
 
       const {
         data: { user },
@@ -54,15 +56,24 @@ export default function BookletBuilderModal({
       if (user) {
         const booklets = await listMyBooklets();
         if (active) setMyBooklets(booklets);
+      } else if (active) {
+        setMyBooklets([]);
       }
 
       if (active) setLoadingBooklets(false);
     };
 
+    setNotice(null);
     void load();
+
+    // Reload when the visitor signs in or out while the builder is open.
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => {
+      void load();
+    });
 
     return () => {
       active = false;
+      subscription?.subscription?.unsubscribe();
     };
   }, [open]);
 
@@ -212,9 +223,17 @@ export default function BookletBuilderModal({
 
               {authChecked && !isAuthed ? (
                 <section className="booklet-builder__section">
-                  <p className="booklet-builder__empty">
-                    Log in to save booklets to your account.
-                  </p>
+                  <div className="booklet-builder__signin">
+                    <p className="booklet-builder__empty">
+                      Log in to save this selection as a booklet.
+                      {selectedChants.length > 0 && ' Your picks are kept while you sign in.'}
+                    </p>
+                    {onRequestLogin && (
+                      <button type="button" className="btn btn-primary btn-sm" onClick={onRequestLogin}>
+                        Log in
+                      </button>
+                    )}
+                  </div>
                 </section>
               ) : (
                 <>
