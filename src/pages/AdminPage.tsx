@@ -8,6 +8,11 @@ import {
   setUserAdminStatus,
 } from '../utils/adminDashboard';
 import {
+  ChantSubmission,
+  approveSubmission,
+  rejectSubmission,
+} from '../utils/chantSubmissions';
+import {
   FILTER_CATEGORIES,
   FILTER_CATEGORY_LABELS,
   FilterCategory,
@@ -47,6 +52,7 @@ export default function AdminPage({ onNavigate }: Props) {
   });
   const [busyOptionKey, setBusyOptionKey] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>(FILTER_CATEGORIES[0]);
+  const [busySubmissionId, setBusySubmissionId] = useState<string | null>(null);
 
   const loadFilterSection = async () => {
     setFilterOptionsError('');
@@ -165,6 +171,31 @@ export default function AdminPage({ onNavigate }: Props) {
       alert(deleteError instanceof Error ? deleteError.message : 'Failed to delete filter option.');
     } finally {
       setBusyOptionKey(null);
+    }
+  };
+
+  const handleApproveSubmission = async (submission: ChantSubmission) => {
+    try {
+      setBusySubmissionId(submission.id);
+      await approveSubmission(submission);
+      await refresh();
+    } catch (approveError) {
+      alert(approveError instanceof Error ? approveError.message : 'Failed to approve submission.');
+    } finally {
+      setBusySubmissionId(null);
+    }
+  };
+
+  const handleRejectSubmission = async (submission: ChantSubmission) => {
+    if (!window.confirm(`Reject "${submission.title}"? Its uploaded PDFs will be discarded.`)) return;
+    try {
+      setBusySubmissionId(submission.id);
+      await rejectSubmission(submission);
+      await refresh();
+    } catch (rejectError) {
+      alert(rejectError instanceof Error ? rejectError.message : 'Failed to reject submission.');
+    } finally {
+      setBusySubmissionId(null);
     }
   };
 
@@ -328,6 +359,74 @@ export default function AdminPage({ onNavigate }: Props) {
               </div>
             </section>
           </div>
+
+          <section className="card" style={{ padding: 18, marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ fontSize: '1.35rem', marginBottom: 6 }}>Chant Submissions</h2>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                  Chants submitted by users, awaiting approval. Approving adds the chant to the library.
+                </p>
+              </div>
+              <div className="badge badge-gold">{dashboard.pendingSubmissions.length.toLocaleString()} pending</div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {dashboard.pendingSubmissions.length > 0 ? (
+                dashboard.pendingSubmissions.map((submission) => {
+                  const meta = [submission.tone, submission.feast, submission.service, submission.part, submission.language]
+                    .filter(Boolean)
+                    .join(' · ');
+                  const isBusy = busySubmissionId === submission.id;
+                  return (
+                    <div
+                      key={submission.id}
+                      style={{ border: '1px solid var(--border-light)', borderRadius: 16, padding: 16, background: 'var(--bg-secondary)' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>{submission.title}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            {submission.submitterName || 'A user'} · {formatDate(submission.created_at)}
+                          </div>
+                          {meta && (
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 6 }}>{meta}</div>
+                          )}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                            {submission.pdf_paths.map((path, i) => (
+                              <span key={path} className="badge badge-outline" style={{ fontSize: '0.72rem' }}>
+                                📄 {submission.pdf_labels[i] || path.split('/').pop()}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={isBusy}
+                            onClick={() => void handleApproveSubmission(submission)}
+                          >
+                            {isBusy ? 'Working…' : 'Approve'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={isBusy}
+                            onClick={() => void handleRejectSubmission(submission)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ color: 'var(--text-muted)' }}>No chant submissions are awaiting approval.</div>
+              )}
+            </div>
+          </section>
 
           <section className="card" style={{ padding: 18, marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>

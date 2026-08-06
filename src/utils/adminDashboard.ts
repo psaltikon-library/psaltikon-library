@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
+import { ChantSubmission, listPendingSubmissions } from './chantSubmissions';
 
 export type AdminProfileRow = {
   id: string;
@@ -46,6 +47,7 @@ export type AdminDashboardData = {
   mostViewedChants: AdminChantStat[];
   mostSavedChants: AdminChantStat[];
   suggestions: AdminSuggestionRow[];
+  pendingSubmissions: ChantSubmission[];
   users: AdminProfileRow[];
 };
 
@@ -119,6 +121,7 @@ export async function loadAdminDashboardData(): Promise<AdminDashboardData> {
     ])
   );
   const chantMap = await fetchChantsByIds(chantIds);
+  const pendingSubmissions = await listPendingSubmissions();
 
   const stats: AdminCountStat[] = [
     { label: 'Total Chants', value: totalChants, detail: 'Published library records' },
@@ -143,6 +146,7 @@ export async function loadAdminDashboardData(): Promise<AdminDashboardData> {
       chant: chantMap.get(row.chant_id) || null,
     })),
     suggestions: (suggestionsResponse.data || []) as AdminSuggestionRow[],
+    pendingSubmissions,
     users: (usersResponse.data || []) as AdminProfileRow[],
   };
 }

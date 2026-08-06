@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import {
+  DEFAULT_FILTER_OPTIONS,
+  FilterCategory,
+  loadFilterValues,
+} from '../utils/filterOptions';
+import { createChantSubmission } from '../utils/chantSubmissions';
 
 interface SuggestionModalProps {
   open: boolean;
@@ -8,61 +14,134 @@ interface SuggestionModalProps {
   onSubmitted?: () => void;
 }
 
+const withCurrent = (values: string[], current: string) =>
+  current && !values.includes(current) ? [current, ...values] : values;
+
 export default function SuggestionModal({ open, onClose, onSubmitted }: SuggestionModalProps) {
   const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
+  const [feast, setFeast] = useState('');
+  const [service, setService] = useState('');
+  const [part, setPart] = useState('');
+  const [tone, setTone] = useState('');
+  const [language, setLanguage] = useState('');
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [filterValues, setFilterValues] =
+    useState<Record<FilterCategory, string[]>>(DEFAULT_FILTER_OPTIONS);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const totalPdfCount = pdfFiles.length;
+
+  const resetForm = () => {
+    setTitle('');
+    setFeast('');
+    setService('');
+    setPart('');
+    setTone('');
+    setLanguage('');
+    setPdfFiles([]);
+    setIsSubmitting(false);
+    setError('');
+    setIsDragOver(false);
+  };
+
+  const applyPdfFiles = (files: FileList | File[] | null) => {
+    if (!files) return;
+    const incoming = Array.from(files);
+    const pdfs = incoming.filter((file) => file.type === 'application/pdf');
+
+    if (pdfs.length < incoming.length) {
+      alert('Only PDF files can be added. Non-PDF files were skipped.');
+    }
+    if (!pdfs.length) return;
+
+    setPdfFiles((current) => {
+      const seen = new Set(current.map((file) => `${file.name}:${file.size}`));
+      const additions = pdfs.filter((file) => !seen.has(`${file.name}:${file.size}`));
+      return [...current, ...additions];
+    });
+  };
+
+  const removePendingFile = (index: number) => {
+    setPdfFiles((current) => current.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    applyPdfFiles(e.dataTransfer.files);
+  };
 
   useEffect(() => {
-    if (!open) {
-      setTitle('');
-      setMessage('');
-      setIsSubmitting(false);
-      setError('');
-    }
+    if (!open) resetForm();
   }, [open]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (!open) return;
+    let isActive = true;
+    void loadFilterValues().then((values) => {
+      if (isActive) setFilterValues(values);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError('Please enter a chant title.');
+      return;
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setError('You must be logged in to submit a chant.');
+      return;
+    }
+
+    if (totalPdfCount === 0) {
+      setError('Please add at least one PDF.');
+      return;
+    }
+
     setIsSubmitting(true);
-
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setError('You must be logged in to submit a suggestion.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const trimmedTitle = title.trim();
-      const trimmedMessage = message.trim();
-
-      if (!trimmedTitle || !trimmedMessage) {
-        setError('Please enter both a title and a message.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { error: insertError } = await supabase.from('chant_suggestions').insert({
-        submitted_by: user.id,
-        title: trimmedTitle,
-        message: trimmedMessage,
-        status: 'new',
-      });
-
-      if (insertError) {
-        setError(insertError.message || 'Failed to submit suggestion.');
-        setIsSubmitting(false);
-        return;
-      }
-
+      await createChantSubmission(
+        { title: trimmedTitle, tone, feast, service, part, language },
+        pdfFiles
+      );
       onSubmitted?.();
+      resetForm();
       onClose();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Failed to submit suggestion.');
+      setError(submitError instanceof Error ? submitError.message : 'Failed to submit chant.');
       setIsSubmitting(false);
     }
   };
@@ -97,7 +176,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
                   <div className="auth-modal-app">Psaltikon Library</div>
                   <div className="auth-modal-title">Suggest a Chant</div>
                   <div className="auth-modal-subtitle">
-                    Send a request for a chant, feast, or service you want added.
+                    Submit a chant with its PDF. An admin will review it before it joins the library.
                   </div>
                 </div>
               </div>
@@ -107,44 +186,146 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
               </button>
             </div>
 
-            <form className="auth-modal-body" onSubmit={handleSubmit}>
-              <div className="auth-field">
-                <label className="auth-label">Suggestion Title</label>
+            <form className="auth-modal-body upload-chant-form" onSubmit={handleSubmit}>
+              <div className="auth-field upload-chant-form__title">
+                <label className="auth-label">Chant Title *</label>
                 <input
                   className="auth-input"
                   type="text"
-                  placeholder="e.g. Resurrection Apolytikion for Tone 3"
+                  placeholder="Enter chant title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  required
                 />
               </div>
 
-              <div className="auth-field">
-                <label className="auth-label">Details</label>
-                <textarea
-                  className="auth-input"
-                  rows={5}
-                  placeholder="Tell us what chant you would like to see and any details that would help."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  style={{ resize: 'vertical', minHeight: 120 }}
-                />
+              <div className="upload-chant-form__content">
+                <div className="upload-chant-form__fields">
+                  <div className="auth-field">
+                    <label className="auth-label">Part of Service</label>
+                    <select className="auth-input" value={part} onChange={(e) => setPart(e.target.value)}>
+                      <option value="">None</option>
+                      {withCurrent(filterValues.part, part).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Tone (Echos)</label>
+                    <select className="auth-input" value={tone} onChange={(e) => setTone(e.target.value)}>
+                      <option value="">None</option>
+                      {withCurrent(filterValues.tone, tone).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Service</label>
+                    <select className="auth-input" value={service} onChange={(e) => setService(e.target.value)}>
+                      <option value="">None</option>
+                      {withCurrent(filterValues.service, service).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="auth-field">
+                    <label className="auth-label">Feast</label>
+                    <select className="auth-input" value={feast} onChange={(e) => setFeast(e.target.value)}>
+                      <option value="">None</option>
+                      {withCurrent(filterValues.feast, feast).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Language</label>
+                    <select className="auth-input" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                      <option value="">None</option>
+                      {withCurrent(filterValues.language, language).map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="upload-chant-form__upload-field">
+                  <div className="auth-field">
+                    <label className="auth-label">Upload PDFs *</label>
+
+                    {pdfFiles.length > 0 && (
+                      <div className="chant-pdf-list">
+                        {pdfFiles.map((file, index) => (
+                          <div className="chant-pdf-item is-new" key={`${file.name}-${file.size}-${index}`}>
+                            <span className="chant-pdf-item__name">
+                              {file.name}
+                              <span className="chant-pdf-item__tag">New</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => removePendingFile(index)}
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div
+                      className={`upload-dropzone${isDragOver ? ' is-dragover' : ''}${totalPdfCount > 0 ? ' has-file' : ''}`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        className="upload-dropzone__input"
+                        type="file"
+                        accept="application/pdf"
+                        multiple
+                        onChange={(e) => {
+                          applyPdfFiles(e.target.files);
+                          e.target.value = '';
+                        }}
+                      />
+
+                      <div className="upload-dropzone__icon">⇪</div>
+                      <div className="upload-dropzone__title">
+                        {totalPdfCount > 0
+                          ? `${totalPdfCount} PDF${totalPdfCount === 1 ? '' : 's'} attached — add more`
+                          : 'Drag & drop PDFs here'}
+                      </div>
+                      <div className="upload-dropzone__subtitle">
+                        You can select several files at once. The first PDF is used as the chant's
+                        primary score.
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {error && (
-                <div style={{ color: 'var(--burgundy)', fontSize: '0.92rem', marginTop: '-0.25rem' }}>
-                  {error}
-                </div>
+                <div style={{ color: 'var(--burgundy)', fontSize: '0.92rem' }}>{error}</div>
               )}
 
-              <div className="auth-actions" style={{ marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={onClose}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit Suggestion'}
-                </button>
-              </div>
+              <button type="submit" className="auth-submit upload-chant-form__submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
+              </button>
             </form>
           </motion.div>
         </motion.div>
