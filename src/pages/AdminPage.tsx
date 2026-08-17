@@ -10,6 +10,7 @@ import {
 import {
   ChantSubmission,
   approveSubmission,
+  listPendingSubmissions,
   rejectSubmission,
 } from '../utils/chantSubmissions';
 import {
@@ -53,6 +54,7 @@ export default function AdminPage({ onNavigate }: Props) {
   const [busyOptionKey, setBusyOptionKey] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>(FILTER_CATEGORIES[0]);
   const [busySubmissionId, setBusySubmissionId] = useState<string | null>(null);
+  const [isRefreshingSubmissions, setIsRefreshingSubmissions] = useState(false);
 
   const loadFilterSection = async () => {
     setFilterOptionsError('');
@@ -171,6 +173,22 @@ export default function AdminPage({ onNavigate }: Props) {
       alert(deleteError instanceof Error ? deleteError.message : 'Failed to delete filter option.');
     } finally {
       setBusyOptionKey(null);
+    }
+  };
+
+  const refreshSubmissions = async () => {
+    setIsRefreshingSubmissions(true);
+    try {
+      const pendingSubmissions = await listPendingSubmissions();
+      setDashboard((current) => (current ? { ...current, pendingSubmissions } : current));
+    } catch (submissionsError) {
+      alert(
+        submissionsError instanceof Error
+          ? submissionsError.message
+          : 'Failed to refresh submissions.'
+      );
+    } finally {
+      setIsRefreshingSubmissions(false);
     }
   };
 
@@ -368,7 +386,16 @@ export default function AdminPage({ onNavigate }: Props) {
                   Chants submitted by users, awaiting approval. Approving adds the chant to the library.
                 </p>
               </div>
-              <div className="badge badge-gold">{dashboard.pendingSubmissions.length.toLocaleString()} pending</div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="badge badge-gold">{dashboard.pendingSubmissions.length.toLocaleString()} pending</div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void refreshSubmissions()}
+                  disabled={isRefreshingSubmissions || isRefreshing || isLoading}
+                >
+                  {isRefreshingSubmissions ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gap: 12 }}>
