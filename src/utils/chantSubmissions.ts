@@ -104,9 +104,9 @@ export async function createChantSubmission(
     );
   }
 
-  // The moderator email is sent server-side by a Supabase Database Webhook on
-  // insert into chant_submissions (see the notify-chant-submission function),
-  // so it fires reliably even if the browser closes right after submitting.
+  // The moderator email is sent server-side by a Postgres trigger on insert into
+  // chant_submissions (see 20260807_chant_submission_email_trigger.sql), which
+  // calls Resend directly via pg_net — reliable even if the browser closes.
 }
 
 // ── Admin side ───────────────────────────────────────────────────────────────
