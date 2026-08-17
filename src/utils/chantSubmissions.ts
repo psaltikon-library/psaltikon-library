@@ -44,20 +44,9 @@ function buildSubmissionPdfPath(file: File, title: string): string {
   return `submissions/${uniqueId}-${slug || 'untitled'}.${extension}`;
 }
 
-async function resolveSubmitterName(userId: string, email?: string | null): Promise<string> {
-  const { data } = await supabase
-    .from('profiles')
-    .select('username, first_name, last_name')
-    .eq('id', userId)
-    .maybeSingle();
-  if (data?.username) return data.username;
-  if (data?.first_name) return [data.first_name, data.last_name].filter(Boolean).join(' ');
-  return email ? email.split('@')[0] : 'A user';
-}
-
 /**
- * Upload the PDFs, create a pending submission, and fire the moderator email.
- * The email is best-effort — a failure there never fails the submission.
+ * Upload the PDFs and create a pending submission. The moderator email is sent
+ * server-side by a Database Webhook on insert, not from here.
  */
 export async function createChantSubmission(
   input: ChantSubmissionInput,
@@ -115,24 +104,9 @@ export async function createChantSubmission(
     );
   }
 
-  // Best-effort moderator notification.
-  try {
-    const submitterName = await resolveSubmitterName(user.id, user.email);
-    await supabase.functions.invoke('notify-chant-submission', {
-      body: {
-        title,
-        submittedBy: submitterName,
-        pdfCount: uploadedPaths.length,
-        tone: input.tone || null,
-        feast: input.feast || null,
-        service: input.service || null,
-        part: input.part || null,
-        language: input.language || null,
-      },
-    });
-  } catch {
-    /* notification is non-critical */
-  }
+  // The moderator email is sent server-side by a Supabase Database Webhook on
+  // insert into chant_submissions (see the notify-chant-submission function),
+  // so it fires reliably even if the browser closes right after submitting.
 }
 
 // ── Admin side ───────────────────────────────────────────────────────────────
