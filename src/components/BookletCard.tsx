@@ -133,21 +133,21 @@ export default function BookletCard({
           <>
             <button
               type="button"
-              className="btn btn-secondary btn-sm booklet-icon-btn"
+              className="btn btn-secondary btn-sm"
               onClick={() => onEdit?.(booklet)}
-              aria-label="Edit booklet"
-              title="Edit"
+              title="Edit booklet"
             >
               {icons.edit}
+              Edit
             </button>
             <button
               type="button"
-              className="btn btn-secondary btn-sm booklet-icon-btn booklet-icon-btn--danger"
+              className="btn btn-secondary btn-sm booklet-delete-btn"
               onClick={() => onDelete?.(booklet)}
-              aria-label="Delete booklet"
-              title="Delete"
+              title="Delete booklet"
             >
               {icons.trash}
+              Delete
             </button>
           </>
         )}
