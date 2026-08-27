@@ -12,7 +12,7 @@ import {
   countByBook,
   foldersAtPath,
   groupByComposer,
-  levelsForBook,
+  levelsForPath,
 } from '../utils/churchBooks';
 
 interface ServicesPageProps {
@@ -90,7 +90,7 @@ const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
   }, []);
 
   const bookCounts = useMemo(() => countByBook(chants), [chants]);
-  const levels = book ? levelsForBook(book) : [];
+  const levels = book ? levelsForPath(book, path) : [];
   const atLeaf = book !== null && path.length >= levels.length;
 
   const folders = useMemo(

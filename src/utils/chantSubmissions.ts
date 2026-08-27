@@ -14,6 +14,7 @@ export interface ChantSubmissionInput {
   psalmNumber?: string;
   menaionMonth?: string;
   menaionDay?: string;
+  weekTheme?: string;
 }
 
 export interface ChantSubmission {
@@ -30,6 +31,7 @@ export interface ChantSubmission {
   psalm_number: number | null;
   menaion_month: string | null;
   menaion_day: number | null;
+  week_theme: string | null;
   pdf_paths: string[];
   pdf_labels: string[];
   status: 'pending' | 'approved' | 'rejected';
@@ -109,6 +111,10 @@ export async function createChantSubmission(
     menaion_month: input.book === 'Menaion' ? input.menaionMonth || null : null,
     menaion_day:
       input.book === 'Menaion' && input.menaionDay ? Number(input.menaionDay) : null,
+    week_theme:
+      input.book === 'Triodion' || input.book === 'Pentecostarion'
+        ? input.weekTheme || null
+        : null,
     pdf_paths: uploadedPaths,
     pdf_labels: labels,
     status: 'pending',
@@ -145,6 +151,7 @@ function devPendingSubmissions(): ChantSubmission[] {
       psalm_number: null,
       menaion_month: null,
       menaion_day: null,
+      week_theme: null,
       pdf_paths: ['submissions/dev-sample.pdf'],
       pdf_labels: ['Cherubic Hymn'],
       status: 'pending',
@@ -207,6 +214,7 @@ export async function approveSubmission(submission: ChantSubmission): Promise<Ch
       psalm_number: submission.psalm_number,
       menaion_month: submission.menaion_month,
       menaion_day: submission.menaion_day,
+      week_theme: submission.week_theme,
       pdf_path: submission.pdf_paths[0] || null,
       uploaded_by: submission.submitted_by,
       status: 'approved',

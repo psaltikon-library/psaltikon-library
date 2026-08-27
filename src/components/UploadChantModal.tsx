@@ -15,7 +15,7 @@ import {
   updateChantPdfLabels,
 } from "../utils/chantPdfs";
 import { loadComposers } from "../utils/composers";
-import { CHURCH_BOOKS, MENAION_MONTHS } from "../utils/churchBooks";
+import { CHURCH_BOOKS, MENAION_MONTHS, SECTIONS_BY_BOOK } from "../utils/churchBooks";
 
 // Ensure a select can still display a stored value that is no longer an option.
 const withCurrent = (values: string[], current: string) =>
@@ -45,6 +45,7 @@ export default function UploadChantModal({
   const [psalmNumber, setPsalmNumber] = useState("");
   const [menaionMonth, setMenaionMonth] = useState("");
   const [menaionDay, setMenaionDay] = useState("");
+  const [weekTheme, setWeekTheme] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [existingPdfs, setExistingPdfs] = useState<ChantPdfRow[]>([]);
   const [removedPdfIds, setRemovedPdfIds] = useState<string[]>([]);
@@ -78,6 +79,7 @@ export default function UploadChantModal({
     );
     setMenaionMonth(initialChant?.menaion_month || "");
     setMenaionDay(initialChant?.menaion_day != null ? String(initialChant.menaion_day) : "");
+    setWeekTheme(initialChant?.week_theme || "");
     setPdfFiles([]);
     setExistingPdfs([]);
     setRemovedPdfIds([]);
@@ -329,6 +331,7 @@ export default function UploadChantModal({
       psalm_number: book === "Psalter" && psalmNumber ? Number(psalmNumber) : null,
       menaion_month: book === "Menaion" ? menaionMonth || null : null,
       menaion_day: book === "Menaion" && menaionDay ? Number(menaionDay) : null,
+      week_theme: SECTIONS_BY_BOOK[book] ? weekTheme.trim() || null : null,
       pdf_path: primaryPdfPath,
       uploaded_by: initialChant?.uploaded_by || user.id,
       status: initialChant?.status || "pending",
@@ -623,6 +626,25 @@ export default function UploadChantModal({
                       ))}
                     </select>
                   </div>
+
+                  {SECTIONS_BY_BOOK[book] && (
+                    <div className="auth-field upload-chant-form__field--full">
+                      <label className="auth-label">Week / Section</label>
+                      <input
+                        className="auth-input"
+                        type="text"
+                        list="week-theme-options"
+                        placeholder="e.g. Sunday of Orthodoxy"
+                        value={weekTheme}
+                        onChange={(e) => setWeekTheme(e.target.value)}
+                      />
+                      <datalist id="week-theme-options">
+                        {(SECTIONS_BY_BOOK[book] || []).map((value) => (
+                          <option key={value} value={value} />
+                        ))}
+                      </datalist>
+                    </div>
+                  )}
 
                   {book === "Psalter" && (
                     <div className="auth-field upload-chant-form__field--full">

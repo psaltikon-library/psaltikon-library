@@ -8,7 +8,7 @@ import {
 } from '../utils/filterOptions';
 import { createChantSubmission } from '../utils/chantSubmissions';
 import { loadComposers } from '../utils/composers';
-import { CHURCH_BOOKS, MENAION_MONTHS } from '../utils/churchBooks';
+import { CHURCH_BOOKS, MENAION_MONTHS, SECTIONS_BY_BOOK } from '../utils/churchBooks';
 
 interface SuggestionModalProps {
   open: boolean;
@@ -31,6 +31,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
   const [psalmNumber, setPsalmNumber] = useState('');
   const [menaionMonth, setMenaionMonth] = useState('');
   const [menaionDay, setMenaionDay] = useState('');
+  const [weekTheme, setWeekTheme] = useState('');
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +55,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
     setPsalmNumber('');
     setMenaionMonth('');
     setMenaionDay('');
+    setWeekTheme('');
     setPdfFiles([]);
     setIsSubmitting(false);
     setError('');
@@ -170,6 +172,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
           psalmNumber,
           menaionMonth,
           menaionDay,
+          weekTheme,
         },
         pdfFiles
       );
@@ -313,6 +316,25 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
                       ))}
                     </select>
                   </div>
+
+                  {SECTIONS_BY_BOOK[book] && (
+                    <div className="auth-field upload-chant-form__field--full">
+                      <label className="auth-label">Week / Section</label>
+                      <input
+                        className="auth-input"
+                        type="text"
+                        list="suggest-week-theme-options"
+                        placeholder="e.g. Sunday of Orthodoxy"
+                        value={weekTheme}
+                        onChange={(e) => setWeekTheme(e.target.value)}
+                      />
+                      <datalist id="suggest-week-theme-options">
+                        {(SECTIONS_BY_BOOK[book] || []).map((value) => (
+                          <option key={value} value={value} />
+                        ))}
+                      </datalist>
+                    </div>
+                  )}
 
                   {book === 'Psalter' && (
                     <div className="auth-field upload-chant-form__field--full">

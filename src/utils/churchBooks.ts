@@ -4,7 +4,10 @@ export const CHURCH_BOOKS = [
   'Anastasimatarion',
   'Divine Liturgy',
   'Menaion',
+  'Triodion',
+  'Pentecostarion',
   'Psalter',
+  'General Services',
 ] as const;
 
 export type ChurchBook = (typeof CHURCH_BOOKS)[number];
@@ -13,7 +16,10 @@ export const BOOK_DESCRIPTIONS: Record<string, string> = {
   Anastasimatarion: 'The resurrectional cycle of the eight tones.',
   'Divine Liturgy': 'Hymns of the Liturgy, ordered by hymn and tone.',
   Menaion: 'The fixed calendar, month by month.',
+  Triodion: 'The lenten season, week by week.',
+  Pentecostarion: 'Pascha through All Saints, week by week.',
   Psalter: 'The psalms, in order.',
+  'General Services': 'Offices served throughout the year.',
 };
 
 /** The ecclesiastical year begins in September. */
@@ -32,6 +38,108 @@ export const MENAION_MONTHS = [
   'August',
 ];
 
+/**
+ * The fixed Great Feasts. These get their own folder directly under their month
+ * instead of sitting under a single day, so hymns that span a forefeast /
+ * afterfeast period have somewhere to live.
+ *
+ * The three movable Great Feasts (Palm Sunday, Ascension, Pentecost) have no
+ * calendar month — they belong to the Triodion and Pentecostarion instead.
+ */
+export const GREAT_FEASTS: Array<{
+  name: string;
+  month: string;
+  aliases: string[];
+}> = [
+  {
+    name: 'Nativity of the Theotokos',
+    month: 'September',
+    aliases: ['nativity of the theotokos', 'birth of the theotokos'],
+  },
+  {
+    name: 'Exaltation of the Holy Cross',
+    month: 'September',
+    aliases: [
+      'exaltation of the holy cross',
+      'elevation of the cross',
+      'universal exaltation',
+      'holy cross',
+    ],
+  },
+  {
+    name: 'Entrance of the Theotokos',
+    month: 'November',
+    aliases: [
+      'entrance of the theotokos',
+      'presentation of the theotokos',
+      'entry of the theotokos',
+    ],
+  },
+  {
+    name: 'Nativity of Christ',
+    month: 'December',
+    aliases: ['nativity of christ', 'nativity of our lord', 'christmas', 'nativity'],
+  },
+  {
+    name: 'Theophany',
+    month: 'January',
+    aliases: ['theophany', 'epiphany', 'baptism of christ'],
+  },
+  {
+    name: 'Meeting of the Lord',
+    month: 'February',
+    aliases: ['meeting of the lord', 'presentation of the lord', 'hypapante', 'candlemas'],
+  },
+  { name: 'Annunciation', month: 'March', aliases: ['annunciation'] },
+  { name: 'Transfiguration', month: 'August', aliases: ['transfiguration'] },
+  {
+    name: 'Dormition of the Theotokos',
+    month: 'August',
+    aliases: ['dormition of the theotokos', 'dormition theotokos', 'dormition', 'assumption'],
+  },
+];
+
+export const GREAT_FEAST_NAMES = GREAT_FEASTS.map((feast) => feast.name);
+
+/** Suggested sections for the Triodion; the first three are its standing offices. */
+export const TRIODION_SECTIONS = [
+  'Great Compline',
+  'Akathist',
+  'Canon of Saint Andrew',
+  'Publican and Pharisee',
+  'Prodigal Son',
+  'Meatfare Sunday',
+  'Cheesefare Sunday',
+  'Sunday of Orthodoxy',
+  'Saint Gregory Palamas',
+  'Veneration of the Cross',
+  'Saint John Climacus',
+  'Saint Mary of Egypt',
+  'Lazarus Saturday',
+  'Palm Sunday',
+  'Holy Week',
+];
+
+export const PENTECOSTARION_SECTIONS = [
+  'Pascha',
+  'Bright Week',
+  'Thomas Sunday',
+  'Myrrhbearing Women',
+  'Paralytic',
+  'Mid-Pentecost',
+  'Samaritan Woman',
+  'Blind Man',
+  'Ascension',
+  'Fathers of the First Council',
+  'Pentecost',
+  'All Saints',
+];
+
+export const SECTIONS_BY_BOOK: Record<string, string[]> = {
+  Triodion: TRIODION_SECTIONS,
+  Pentecostarion: PENTECOSTARION_SECTIONS,
+};
+
 /** Bucket for chants missing a value at some level — shown last, never hidden. */
 export const UNSORTED = 'Unsorted';
 
@@ -49,6 +157,28 @@ const alphaNumeric = (a: string, b: string) =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+const normalize = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Longest aliases first so "Nativity of the Theotokos" wins over "Nativity".
+const FEAST_ALIASES = GREAT_FEASTS.flatMap((feast) =>
+  feast.aliases.map((alias) => ({ alias: normalize(alias), feast }))
+).sort((a, b) => b.alias.length - a.alias.length);
+
+/** The Great Feast a chant belongs to, matched loosely against its feast field. */
+export function greatFeastOf(chant: Chant): { name: string; month: string } | null {
+  const feast = normalize(text(chant.feast));
+  if (!feast) return null;
+  const hit = FEAST_ALIASES.find((entry) => feast.includes(entry.alias));
+  return hit ? { name: hit.feast.name, month: hit.feast.month } : null;
+}
+
+export const isGreatFeastName = (value: string) => GREAT_FEAST_NAMES.includes(value);
 
 const toneLevel: BookLevel = {
   label: 'Tone',
@@ -74,9 +204,20 @@ const feastLevel: BookLevel = {
   compare: alphaNumeric,
 };
 
-const monthLevel: BookLevel = {
+const weekThemeLevel: BookLevel = {
+  label: 'Week',
+  valueOf: (chant) => text(chant.week_theme) || UNSORTED,
+  compare: alphaNumeric,
+};
+
+/** Menaion month — a Great Feast falls back to its own calendar month. */
+const menaionMonthLevel: BookLevel = {
   label: 'Month',
-  valueOf: (chant) => text(chant.menaion_month) || UNSORTED,
+  valueOf: (chant) => {
+    const stored = text(chant.menaion_month);
+    if (stored) return stored;
+    return greatFeastOf(chant)?.month || UNSORTED;
+  },
   compare: (a, b) => {
     const ia = MENAION_MONTHS.indexOf(a);
     const ib = MENAION_MONTHS.indexOf(b);
@@ -87,13 +228,29 @@ const monthLevel: BookLevel = {
   },
 };
 
-const dayLevel: BookLevel = {
-  label: 'Day',
-  valueOf: (chant) =>
-    typeof chant.menaion_day === 'number' && !Number.isNaN(chant.menaion_day)
+/**
+ * Inside a month: Great Feasts get their own folder, everything else is filed
+ * under its day. Feasts sort above the days.
+ */
+const menaionMonthChildLevel: BookLevel = {
+  label: 'Feast or day',
+  valueOf: (chant) => {
+    const feast = greatFeastOf(chant);
+    if (feast) return feast.name;
+    return typeof chant.menaion_day === 'number' && !Number.isNaN(chant.menaion_day)
       ? String(chant.menaion_day)
-      : UNSORTED,
-  compare: alphaNumeric,
+      : UNSORTED;
+  },
+  compare: (a, b) => {
+    const aFeast = isGreatFeastName(a);
+    const bFeast = isGreatFeastName(b);
+    if (aFeast && !bFeast) return -1;
+    if (!aFeast && bFeast) return 1;
+    if (aFeast && bFeast) {
+      return GREAT_FEAST_NAMES.indexOf(a) - GREAT_FEAST_NAMES.indexOf(b);
+    }
+    return alphaNumeric(a, b);
+  },
 };
 
 const psalmLevel: BookLevel = {
@@ -105,18 +262,32 @@ const psalmLevel: BookLevel = {
   compare: alphaNumeric,
 };
 
-export const BOOK_LEVELS: Record<string, BookLevel[]> = {
+const BOOK_LEVELS: Record<string, BookLevel[]> = {
   Anastasimatarion: [toneLevel, serviceLevel, hymnLevel],
   'Divine Liturgy': [hymnLevel, toneLevel],
-  Menaion: [monthLevel, dayLevel, feastLevel],
+  Menaion: [menaionMonthLevel, menaionMonthChildLevel, feastLevel],
+  Triodion: [weekThemeLevel, serviceLevel],
+  Pentecostarion: [weekThemeLevel, serviceLevel],
   Psalter: [psalmLevel],
+  'General Services': [serviceLevel],
 };
 
-export const levelsForBook = (book: string): BookLevel[] => BOOK_LEVELS[book] || [];
+/**
+ * The levels that apply at a given position. Depth is usually fixed per book,
+ * but the Menaion is shallower down a Great Feast branch: the feast replaces
+ * the day, and its folder is already the leaf.
+ */
+export function levelsForPath(book: string, path: string[] = []): BookLevel[] {
+  const levels = BOOK_LEVELS[book] || [];
+  if (book === 'Menaion' && path[1] && isGreatFeastName(path[1])) {
+    return [menaionMonthLevel, menaionMonthChildLevel];
+  }
+  return levels;
+}
 
 /** Chants filed under a book, narrowed by the folders already opened. */
 export function chantsAtPath(chants: Chant[], book: string, path: string[]): Chant[] {
-  const levels = levelsForBook(book);
+  const levels = levelsForPath(book, path);
   return chants.filter((chant) => {
     if (text(chant.book) !== book) return false;
     return path.every((value, depth) => {
@@ -133,7 +304,7 @@ export interface DirectoryFolder {
 
 /** The folders to show at the current depth, with how many chants each holds. */
 export function foldersAtPath(chants: Chant[], book: string, path: string[]): DirectoryFolder[] {
-  const levels = levelsForBook(book);
+  const levels = levelsForPath(book, path);
   const level = levels[path.length];
   if (!level) return [];
 

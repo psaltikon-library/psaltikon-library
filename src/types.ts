@@ -21,6 +21,8 @@ export interface Chant {
   /** Menaion ordering (ecclesiastical calendar). */
   menaion_month?: string | null;
   menaion_day?: number | null;
+  /** Triodion / Pentecostarion ordering. */
+  week_theme?: string | null;
 }
 
 export interface Booklet {
