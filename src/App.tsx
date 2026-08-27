@@ -271,6 +271,7 @@ function App() {
         return (
           <ServicesPage
             onViewChant={navigateToChant}
+            onNavigate={navigateTo}
           />
         );
       case 'about':

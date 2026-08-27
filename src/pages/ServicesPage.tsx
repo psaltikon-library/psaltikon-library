@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChantCard from '../components/ChantCard';
+import UploadChantModal from '../components/UploadChantModal';
+import BookletBuilderModal from '../components/BookletBuilderModal';
+import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
-import { Chant } from '../types';
+import { Chant, Page } from '../types';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { getSavedChantIds } from '../utils/savedChants';
 import {
@@ -17,6 +20,7 @@ import {
 
 interface ServicesPageProps {
   onViewChant: (id: string) => void;
+  onNavigate?: (page: Page) => void;
 }
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
@@ -50,7 +54,7 @@ const ChevronIcon = () => (
   </svg>
 );
 
-const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
+const ServicesPage = ({ onViewChant, onNavigate }: ServicesPageProps) => {
   const [chants, setChants] = useState<Chant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -59,6 +63,14 @@ const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
   // Directory position: the book being browsed and the folders opened inside it.
   const [book, setBook] = useState<string | null>(null);
   const [path, setPath] = useState<string[]>([]);
+
+  // Editing (admins) and booklet building, mirroring the library page.
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editingChant, setEditingChant] = useState<Chant | null>(null);
+  const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
+  const [bookletModalOpen, setBookletModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     const loadChants = async () => {
@@ -102,6 +114,27 @@ const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
     () => (book && atLeaf ? groupByComposer(chantsAtPath(chants, book, path)) : []),
     [chants, book, path, atLeaf]
   );
+
+  const handleEditChant = (chantId: string) => {
+    setEditingChant(chants.find((chant) => chant.id === chantId) || null);
+    setUploadModalOpen(true);
+  };
+
+  const handleSavedChant = (savedChant: Chant) => {
+    setChants((current) =>
+      current.some((chant) => chant.id === savedChant.id)
+        ? current.map((chant) => (chant.id === savedChant.id ? savedChant : chant))
+        : [savedChant, ...current]
+    );
+  };
+
+  const toggleBookletChant = (chantId: string) => {
+    setBookletChantIds((current) =>
+      current.includes(chantId)
+        ? current.filter((id) => id !== chantId)
+        : [...current, chantId]
+    );
+  };
 
   const openBook = (name: string) => {
     setBook(name);
@@ -280,8 +313,11 @@ const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
                           key={chant.id}
                           chant={chant}
                           onView={onViewChant}
+                          onEdit={handleEditChant}
                           isSaved={savedChantIds.includes(chant.id)}
                           showSaveButton
+                          onToggleBooklet={toggleBookletChant}
+                          isInBooklet={bookletChantIds.includes(chant.id)}
                           index={index}
                         />
                       ))}
@@ -293,6 +329,70 @@ const ServicesPage = ({ onViewChant }: ServicesPageProps) => {
           )}
         </AnimatePresence>
       )}
+
+      <AnimatePresence>
+        {bookletChantIds.length > 0 && (
+          <motion.div
+            className="services-booklet-bar"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25, ease: EASE_OUT }}
+          >
+            <span className="services-booklet-count">
+              {bookletChantIds.length} {bookletChantIds.length === 1 ? 'chant' : 'chants'} selected
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => setBookletModalOpen(true)}
+            >
+              Open Booklet Builder
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setBookletChantIds([])}
+            >
+              Clear
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <UploadChantModal
+        open={uploadModalOpen}
+        initialChant={editingChant}
+        onClose={() => {
+          setUploadModalOpen(false);
+          setEditingChant(null);
+        }}
+        onSaved={handleSavedChant}
+      />
+
+      <BookletBuilderModal
+        open={bookletModalOpen}
+        onClose={() => setBookletModalOpen(false)}
+        selectedChants={bookletChantIds
+          .map((id) => chants.find((chant) => chant.id === id))
+          .filter((chant): chant is Chant => !!chant)}
+        onRemoveChant={(id) =>
+          setBookletChantIds((current) => current.filter((chantId) => chantId !== id))
+        }
+        onClearSelection={() => setBookletChantIds([])}
+        onNavigate={onNavigate}
+        onRequestLogin={() => {
+          setAuthMode('login');
+          setAuthModalOpen(true);
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSwitchMode={setAuthMode}
+      />
     </div>
   );
 };
