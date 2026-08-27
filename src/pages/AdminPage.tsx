@@ -401,7 +401,7 @@ export default function AdminPage({ onNavigate }: Props) {
             <div style={{ display: 'grid', gap: 12 }}>
               {dashboard.pendingSubmissions.length > 0 ? (
                 dashboard.pendingSubmissions.map((submission) => {
-                  const meta = [submission.tone, submission.feast, submission.service, submission.part, submission.language]
+                  const meta = [submission.tone, submission.feast, submission.service, submission.part, submission.language, submission.composer]
                     .filter(Boolean)
                     .join(' · ');
                   const isBusy = busySubmissionId === submission.id;

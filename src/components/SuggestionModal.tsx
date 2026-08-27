@@ -7,6 +7,7 @@ import {
   loadFilterValues,
 } from '../utils/filterOptions';
 import { createChantSubmission } from '../utils/chantSubmissions';
+import { loadComposers } from '../utils/composers';
 
 interface SuggestionModalProps {
   open: boolean;
@@ -24,12 +25,14 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
   const [part, setPart] = useState('');
   const [tone, setTone] = useState('');
   const [language, setLanguage] = useState('');
+  const [composer, setComposer] = useState('');
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [filterValues, setFilterValues] =
     useState<Record<FilterCategory, string[]>>(DEFAULT_FILTER_OPTIONS);
+  const [composers, setComposers] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const totalPdfCount = pdfFiles.length;
@@ -41,6 +44,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
     setPart('');
     setTone('');
     setLanguage('');
+    setComposer('');
     setPdfFiles([]);
     setIsSubmitting(false);
     setError('');
@@ -99,6 +103,17 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
 
   useEffect(() => {
     if (!open) return;
+    let isActive = true;
+    void loadComposers().then((list) => {
+      if (isActive) setComposers(list);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -134,7 +149,7 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
     setIsSubmitting(true);
     try {
       await createChantSubmission(
-        { title: trimmedTitle, tone, feast, service, part, language },
+        { title: trimmedTitle, tone, feast, service, part, language, composer },
         pdfFiles
       );
       onSubmitted?.();
@@ -249,6 +264,23 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
                         <option key={value} value={value}>{value}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Composer</label>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      list="suggest-composer-options"
+                      placeholder="Type a composer name"
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                    />
+                    <datalist id="suggest-composer-options">
+                      {composers.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 

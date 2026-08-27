@@ -9,6 +9,7 @@ export interface ChantSubmissionInput {
   service?: string;
   part?: string;
   language?: string;
+  composer?: string;
 }
 
 export interface ChantSubmission {
@@ -20,6 +21,7 @@ export interface ChantSubmission {
   service: string | null;
   part: string | null;
   language: string | null;
+  composer: string | null;
   pdf_paths: string[];
   pdf_labels: string[];
   status: 'pending' | 'approved' | 'rejected';
@@ -92,6 +94,7 @@ export async function createChantSubmission(
     service: input.service || null,
     part: input.part || null,
     language: input.language || null,
+    composer: input.composer || null,
     pdf_paths: uploadedPaths,
     pdf_labels: labels,
     status: 'pending',
@@ -123,6 +126,7 @@ function devPendingSubmissions(): ChantSubmission[] {
       service: 'Divine Liturgy',
       part: 'Cherubic Hymn',
       language: 'English',
+      composer: 'Traditional',
       pdf_paths: ['submissions/dev-sample.pdf'],
       pdf_labels: ['Cherubic Hymn'],
       status: 'pending',
@@ -180,6 +184,7 @@ export async function approveSubmission(submission: ChantSubmission): Promise<Ch
       service: submission.service,
       part: submission.part,
       language: submission.language,
+      composer: submission.composer,
       pdf_path: submission.pdf_paths[0] || null,
       uploaded_by: submission.submitted_by,
       status: 'approved',
