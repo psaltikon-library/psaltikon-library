@@ -3594,6 +3594,32 @@ a:hover {
   letter-spacing: 0.06em;
 }
 
+.chant-pdf-item__name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.chant-pdf-item__name-input:focus {
+  outline: none;
+  border-color: var(--burgundy);
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.1);
+}
+
+.chant-pdf-item__name-input:disabled {
+  background: transparent;
+  border-color: transparent;
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
 .upload-chant-form__submit {
   align-self: stretch;
   width: 100%;

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { isChantSaved, saveChant, unsaveChant } from '../utils/savedChants';
 import { resolveChantWithDevFallback } from '../utils/chantFallback';
 import { recordChantView } from '../utils/analytics';
+import UploadChantModal from '../components/UploadChantModal';
 import { ChantPdfRow, loadChantPdfs } from '../utils/chantPdfs';
 
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -401,6 +402,12 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
   const [chant, setChant] = useState<Chant | null>(null);
   const [isLoadingChant, setIsLoadingChant] = useState(true);
   const [chantError, setChantError] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(localStorage.getItem('psaltikon_admin_authed') === 'true');
+  }, []);
 
   useEffect(() => {
     const loadChant = async () => {
@@ -841,6 +848,17 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
             + Add to Booklet
           </motion.button>
 
+          {isAdmin && (
+            <motion.button
+              className="btn btn-secondary"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setEditOpen(true)}
+            >
+              ✎ Edit Chant
+            </motion.button>
+          )}
+
           <motion.button
             className="btn btn-ghost"
             whileHover={{ scale: 1.05 }}
@@ -985,6 +1003,16 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
             ))}
         </div>
       </motion.div>
+
+      <UploadChantModal
+        open={editOpen}
+        initialChant={chant}
+        onClose={() => setEditOpen(false)}
+        onSaved={(updated) => {
+          setChant(updated as Chant);
+          setEditOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -12,7 +12,9 @@ import {
   deleteChantPdfs,
   labelFromFileName,
   loadChantPdfs,
+  updateChantPdfLabels,
 } from "../utils/chantPdfs";
+import { loadComposers } from "../utils/composers";
 
 // Ensure a select can still display a stored value that is no longer an option.
 const withCurrent = (values: string[], current: string) =>
@@ -37,6 +39,7 @@ export default function UploadChantModal({
   const [part, setPart] = useState("");
   const [tone, setTone] = useState("");
   const [language, setLanguage] = useState("");
+  const [composer, setComposer] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [existingPdfs, setExistingPdfs] = useState<ChantPdfRow[]>([]);
   const [removedPdfIds, setRemovedPdfIds] = useState<string[]>([]);
@@ -44,7 +47,13 @@ export default function UploadChantModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterValues, setFilterValues] =
     useState<Record<FilterCategory, string[]>>(DEFAULT_FILTER_OPTIONS);
+  const [composers, setComposers] = useState<string[]>([]);
+  // Editable PDF display names, keyed by existing row id / by "name:size" for new files.
+  const [existingLabels, setExistingLabels] = useState<Record<string, string>>({});
+  const [newLabels, setNewLabels] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const fileKey = (file: File) => `${file.name}:${file.size}`;
 
   const isEditing = !!initialChant?.id;
   const keptPdfs = existingPdfs.filter((row) => !removedPdfIds.includes(row.id));
@@ -57,9 +66,11 @@ export default function UploadChantModal({
     setPart(initialChant?.part || "");
     setTone(initialChant?.tone || "");
     setLanguage(initialChant?.language || "");
+    setComposer(initialChant?.composer || "");
     setPdfFiles([]);
     setExistingPdfs([]);
     setRemovedPdfIds([]);
+    setNewLabels({});
     setIsSubmitting(false);
   };
 
@@ -94,6 +105,14 @@ export default function UploadChantModal({
     setPdfFiles((current) => {
       const seen = new Set(current.map((file) => `${file.name}:${file.size}`));
       const additions = pdfs.filter((file) => !seen.has(`${file.name}:${file.size}`));
+      setNewLabels((labels) => {
+        const next = { ...labels };
+        additions.forEach((file) => {
+          const key = `${file.name}:${file.size}`;
+          if (!(key in next)) next[key] = labelFromFileName(file.name);
+        });
+        return next;
+      });
       return [...current, ...additions];
     });
   };
@@ -148,6 +167,27 @@ export default function UploadChantModal({
       isActive = false;
     };
   }, [open]);
+
+  // Dynamic composer suggestions built from composers already used on chants.
+  useEffect(() => {
+    if (!open) return;
+    let isActive = true;
+    void loadComposers().then((list) => {
+      if (isActive) setComposers(list);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [open]);
+
+  // Seed the editable name for each existing PDF whenever the list (re)loads.
+  useEffect(() => {
+    setExistingLabels(
+      Object.fromEntries(
+        existingPdfs.map((row) => [row.id, row.label || row.pdf_path.split("/").pop() || ""])
+      )
+    );
+  }, [existingPdfs]);
 
   // Load the chant's existing PDFs when editing. Falls back to the chant's own
   // pdf_path when the chant_pdfs table is unavailable or has no rows yet.
@@ -272,7 +312,7 @@ export default function UploadChantModal({
       service: service || null,
       part: part || null,
       language: language || null,
-      composer: initialChant?.composer || null,
+      composer: composer.trim() || null,
       pdf_path: primaryPdfPath,
       uploaded_by: initialChant?.uploaded_by || user.id,
       status: initialChant?.status || "pending",
@@ -302,7 +342,9 @@ export default function UploadChantModal({
             uploadedPaths.map((path, index) => ({
               chant_id: initialChant.id,
               pdf_path: path,
-              label: labelFromFileName(pdfFiles[index]?.name || ""),
+              label:
+                newLabels[fileKey(pdfFiles[index])]?.trim() ||
+                labelFromFileName(pdfFiles[index]?.name || ""),
               sort_order: nextSortOrderStart + index,
             }))
           );
@@ -341,6 +383,22 @@ export default function UploadChantModal({
         }
       }
 
+      // Persist any renamed existing PDFs (legacy rows have no real id to update).
+      const labelUpdates = keptPdfs
+        .filter((row) => !row.id.startsWith("legacy:"))
+        .filter((row) => (existingLabels[row.id] ?? "").trim() !== (row.label || "").trim())
+        .map((row) => ({ id: row.id, label: existingLabels[row.id] ?? "" }));
+
+      if (labelUpdates.length) {
+        try {
+          await updateChantPdfLabels(labelUpdates);
+        } catch (labelError) {
+          alert(
+            labelError instanceof Error ? labelError.message : "Some PDF names could not be saved."
+          );
+        }
+      }
+
       onSaved?.(data);
       setIsSubmitting(false);
       setPdfFiles([]);
@@ -366,7 +424,9 @@ export default function UploadChantModal({
         uploadedPaths.map((path, index) => ({
           chant_id: data.id,
           pdf_path: path,
-          label: labelFromFileName(pdfFiles[index]?.name || ""),
+          label:
+            newLabels[fileKey(pdfFiles[index])]?.trim() ||
+            labelFromFileName(pdfFiles[index]?.name || ""),
           sort_order: index,
         }))
       );
@@ -516,6 +576,23 @@ export default function UploadChantModal({
                       ))}
                     </select>
                   </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Composer</label>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      list="composer-options"
+                      placeholder="Type a composer name"
+                      value={composer}
+                      onChange={(e) => setComposer(e.target.value)}
+                    />
+                    <datalist id="composer-options">
+                      {composers.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                  </div>
                 </div>
 
                 <div className="upload-chant-form__upload-field">
@@ -533,9 +610,19 @@ export default function UploadChantModal({
                               key={row.id}
                               className={`chant-pdf-item${isRemoved ? " is-removed" : ""}`}
                             >
-                              <span className="chant-pdf-item__name">
-                                {row.label || row.pdf_path.split("/").pop()}
-                              </span>
+                              <input
+                                className="chant-pdf-item__name-input"
+                                value={existingLabels[row.id] ?? ""}
+                                onChange={(e) =>
+                                  setExistingLabels((labels) => ({
+                                    ...labels,
+                                    [row.id]: e.target.value,
+                                  }))
+                                }
+                                disabled={isRemoved}
+                                placeholder="PDF name"
+                                aria-label="PDF name"
+                              />
                               <button
                                 type="button"
                                 className="btn btn-ghost btn-sm"
@@ -550,7 +637,18 @@ export default function UploadChantModal({
                         {pdfFiles.map((file, index) => (
                           <div className="chant-pdf-item is-new" key={`${file.name}-${file.size}-${index}`}>
                             <span className="chant-pdf-item__name">
-                              {file.name}
+                              <input
+                                className="chant-pdf-item__name-input"
+                                value={newLabels[fileKey(file)] ?? labelFromFileName(file.name)}
+                                onChange={(e) =>
+                                  setNewLabels((labels) => ({
+                                    ...labels,
+                                    [fileKey(file)]: e.target.value,
+                                  }))
+                                }
+                                placeholder="PDF name"
+                                aria-label="PDF name"
+                              />
                               <span className="chant-pdf-item__tag">New</span>
                             </span>
                             <button

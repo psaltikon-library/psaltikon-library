@@ -38,6 +38,21 @@ export async function addChantPdfs(
   }
 }
 
+export async function updateChantPdfLabels(
+  rows: Array<{ id: string; label: string }>
+): Promise<void> {
+  for (const row of rows) {
+    const { error } = await supabase
+      .from('chant_pdfs')
+      .update({ label: row.label.trim() || null })
+      .eq('id', row.id);
+
+    if (error) {
+      throw new Error(error.message || 'Failed to rename a PDF.');
+    }
+  }
+}
+
 export async function deleteChantPdfs(ids: string[]): Promise<void> {
   if (!ids.length) return;
 

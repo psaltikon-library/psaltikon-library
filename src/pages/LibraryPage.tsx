@@ -34,6 +34,7 @@ const buildFilterOptions = (chants: Chant[]) => {
     parts: getUniqueValues(chants.map((chant) => chant.part), "All Parts"),
     tones: getUniqueValues(chants.map((chant) => chant.tone), "All Tones"),
     languages: getUniqueValues(chants.map((chant) => chant.language), "All Languages"),
+    composers: getUniqueValues(chants.map((chant) => chant.composer), "All Composers"),
   };
 };
 
@@ -81,6 +82,7 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
   const [selectedPart, setSelectedPart] = useState("All Parts");
   const [selectedTone, setSelectedTone] = useState("All Tones");
   const [selectedLanguage, setSelectedLanguage] = useState("All Languages");
+  const [selectedComposer, setSelectedComposer] = useState("All Composers");
 
   const showNotification = (message: string) => {
     setNotificationMessage(message);
@@ -159,6 +161,8 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
       selectedTone === "All Tones" || chant.tone === selectedTone;
     const matchesLanguage =
       selectedLanguage === "All Languages" || chant.language === selectedLanguage;
+    const matchesComposer =
+      selectedComposer === "All Composers" || chant.composer === selectedComposer;
 
     return (
       matchesSearch &&
@@ -166,7 +170,8 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
       matchesService &&
       matchesPart &&
       matchesTone &&
-      matchesLanguage
+      matchesLanguage &&
+      matchesComposer
     );
   });
 
@@ -176,6 +181,7 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
     setSelectedPart("All Parts");
     setSelectedTone("All Tones");
     setSelectedLanguage("All Languages");
+    setSelectedComposer("All Composers");
     setSearchQuery("");
   };
 
@@ -488,6 +494,26 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
               {filterOptions.languages.map((lang) => (
                 <option key={lang} value={lang}>
                   {lang}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+
+          <motion.div
+            className="filter-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <label className="filter-label">Composer</label>
+            <select
+              className="filter-select"
+              value={selectedComposer}
+              onChange={(e) => setSelectedComposer(e.target.value)}
+            >
+              {filterOptions.composers.map((composer) => (
+                <option key={composer} value={composer}>
+                  {composer}
                 </option>
               ))}
             </select>
