@@ -4398,3 +4398,242 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SERVICES — CHURCH BOOK DIRECTORY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.services-header {
+  margin-bottom: var(--space-xl);
+}
+
+.services-title {
+  font-size: clamp(2.25rem, 5vw, 3rem);
+  margin-bottom: var(--space-sm);
+}
+
+.services-subtitle {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-accent);
+  font-size: 1.15rem;
+}
+
+/* Breadcrumb */
+.services-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-light);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+}
+
+.services-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.services-crumb {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--burgundy);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.services-crumb:hover:not(:disabled) {
+  background: rgba(139, 38, 53, 0.08);
+}
+
+.services-crumb:disabled {
+  color: var(--text-primary);
+  cursor: default;
+  font-weight: 600;
+}
+
+.services-crumb-sep {
+  color: var(--text-muted);
+}
+
+/* Book cards */
+.services-books {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+.services-book {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-xl);
+  text-align: left;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out),
+    border-color 0.4s var(--ease-out);
+}
+
+.services-book:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 38, 53, 0.18);
+  box-shadow: var(--shadow-xl);
+}
+
+.services-book-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(139, 38, 53, 0.09), rgba(201, 162, 39, 0.12));
+  color: var(--burgundy);
+}
+
+.services-book-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.services-book-name {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.services-book-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.services-book-count {
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Folder rows */
+.services-level-label {
+  margin: 0 0 var(--space-md);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gold-dark);
+}
+
+.services-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.services-folder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  padding: var(--space-md) var(--space-lg);
+  text-align: left;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
+}
+
+.services-folder:hover {
+  transform: translateX(3px);
+  border-color: rgba(139, 38, 53, 0.2);
+  background: rgba(139, 38, 53, 0.02);
+}
+
+.services-folder-icon {
+  display: inline-flex;
+  color: var(--gold-dark);
+  flex-shrink: 0;
+}
+
+.services-folder-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 0.98rem;
+  color: var(--text-primary);
+}
+
+.services-folder-count {
+  flex-shrink: 0;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(139, 38, 53, 0.08);
+  color: var(--burgundy);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.services-folder-chevron {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Composer sections at the leaf */
+.services-composer {
+  margin-bottom: var(--space-3xl);
+}
+
+.services-composer-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.services-composer-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.services-composer-count {
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.services-panel {
+  padding: var(--space-2xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  text-align: center;
+}

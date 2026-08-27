@@ -7,7 +7,7 @@ import LibraryPage from './pages/LibraryPage';
 import ChantDetailPage from './pages/ChantDetailPage';
 import PhoneticsPage from './pages/PhoneticsPage';
 import BookletsPage from './pages/BookletsPage';
-import CompositionsPage from './pages/CompositionsPage';
+import ServicesPage from './pages/ServicesPage';
 import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import SavedItemsPage from './pages/SavedItemsPage';
@@ -24,6 +24,7 @@ const validPages: Page[] = [
   'chant-detail',
   'phonetics',
   'booklets',
+  'services',
   'compositions',
   'about',
   'admin',
@@ -263,9 +264,12 @@ function App() {
         return (
           <BookletsPage />
         );
+      // 'compositions' is kept as an alias so links shared before the rename
+      // still land on the directory.
+      case 'services':
       case 'compositions':
         return (
-          <CompositionsPage 
+          <ServicesPage
             onViewChant={navigateToChant}
           />
         );

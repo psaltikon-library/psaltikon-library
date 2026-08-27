@@ -74,11 +74,11 @@ const Footer = ({ onNavigate }: FooterProps) => {
             </li>
             <li>
               <motion.a 
-                onClick={() => onNavigate('compositions')}
+                onClick={() => onNavigate('services')}
                 whileHover={{ x: 5 }}
                 style={{ cursor: 'pointer' }}
               >
-                Compositions
+                Services
               </motion.a>
             </li>
           </ul>

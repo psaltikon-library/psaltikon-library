@@ -8,6 +8,7 @@ import {
 } from '../utils/filterOptions';
 import { createChantSubmission } from '../utils/chantSubmissions';
 import { loadComposers } from '../utils/composers';
+import { CHURCH_BOOKS, MENAION_MONTHS } from '../utils/churchBooks';
 
 interface SuggestionModalProps {
   open: boolean;
@@ -26,6 +27,10 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
   const [tone, setTone] = useState('');
   const [language, setLanguage] = useState('');
   const [composer, setComposer] = useState('');
+  const [book, setBook] = useState('');
+  const [psalmNumber, setPsalmNumber] = useState('');
+  const [menaionMonth, setMenaionMonth] = useState('');
+  const [menaionDay, setMenaionDay] = useState('');
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +50,10 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
     setTone('');
     setLanguage('');
     setComposer('');
+    setBook('');
+    setPsalmNumber('');
+    setMenaionMonth('');
+    setMenaionDay('');
     setPdfFiles([]);
     setIsSubmitting(false);
     setError('');
@@ -149,7 +158,19 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
     setIsSubmitting(true);
     try {
       await createChantSubmission(
-        { title: trimmedTitle, tone, feast, service, part, language, composer },
+        {
+          title: trimmedTitle,
+          tone,
+          feast,
+          service,
+          part,
+          language,
+          composer,
+          book,
+          psalmNumber,
+          menaionMonth,
+          menaionDay,
+        },
         pdfFiles
       );
       onSubmitted?.();
@@ -282,6 +303,62 @@ export default function SuggestionModal({ open, onClose, onSubmitted }: Suggesti
                       ))}
                     </datalist>
                   </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Church Book</label>
+                    <select className="auth-input" value={book} onChange={(e) => setBook(e.target.value)}>
+                      <option value="">None</option>
+                      {CHURCH_BOOKS.map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {book === 'Psalter' && (
+                    <div className="auth-field upload-chant-form__field--full">
+                      <label className="auth-label">Psalm Number</label>
+                      <input
+                        className="auth-input"
+                        type="number"
+                        min={1}
+                        max={151}
+                        placeholder="e.g. 103"
+                        value={psalmNumber}
+                        onChange={(e) => setPsalmNumber(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {book === 'Menaion' && (
+                    <>
+                      <div className="auth-field">
+                        <label className="auth-label">Month</label>
+                        <select
+                          className="auth-input"
+                          value={menaionMonth}
+                          onChange={(e) => setMenaionMonth(e.target.value)}
+                        >
+                          <option value="">None</option>
+                          {MENAION_MONTHS.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="auth-field">
+                        <label className="auth-label">Day</label>
+                        <input
+                          className="auth-input"
+                          type="number"
+                          min={1}
+                          max={31}
+                          placeholder="e.g. 15"
+                          value={menaionDay}
+                          onChange={(e) => setMenaionDay(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="upload-chant-form__upload-field">

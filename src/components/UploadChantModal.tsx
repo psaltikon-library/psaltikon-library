@@ -15,6 +15,7 @@ import {
   updateChantPdfLabels,
 } from "../utils/chantPdfs";
 import { loadComposers } from "../utils/composers";
+import { CHURCH_BOOKS, MENAION_MONTHS } from "../utils/churchBooks";
 
 // Ensure a select can still display a stored value that is no longer an option.
 const withCurrent = (values: string[], current: string) =>
@@ -40,6 +41,10 @@ export default function UploadChantModal({
   const [tone, setTone] = useState("");
   const [language, setLanguage] = useState("");
   const [composer, setComposer] = useState("");
+  const [book, setBook] = useState("");
+  const [psalmNumber, setPsalmNumber] = useState("");
+  const [menaionMonth, setMenaionMonth] = useState("");
+  const [menaionDay, setMenaionDay] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [existingPdfs, setExistingPdfs] = useState<ChantPdfRow[]>([]);
   const [removedPdfIds, setRemovedPdfIds] = useState<string[]>([]);
@@ -67,6 +72,12 @@ export default function UploadChantModal({
     setTone(initialChant?.tone || "");
     setLanguage(initialChant?.language || "");
     setComposer(initialChant?.composer || "");
+    setBook(initialChant?.book || "");
+    setPsalmNumber(
+      initialChant?.psalm_number != null ? String(initialChant.psalm_number) : ""
+    );
+    setMenaionMonth(initialChant?.menaion_month || "");
+    setMenaionDay(initialChant?.menaion_day != null ? String(initialChant.menaion_day) : "");
     setPdfFiles([]);
     setExistingPdfs([]);
     setRemovedPdfIds([]);
@@ -313,6 +324,11 @@ export default function UploadChantModal({
       part: part || null,
       language: language || null,
       composer: composer.trim() || null,
+      book: book || null,
+      // Only the book that uses each ordering field keeps its value.
+      psalm_number: book === "Psalter" && psalmNumber ? Number(psalmNumber) : null,
+      menaion_month: book === "Menaion" ? menaionMonth || null : null,
+      menaion_day: book === "Menaion" && menaionDay ? Number(menaionDay) : null,
       pdf_path: primaryPdfPath,
       uploaded_by: initialChant?.uploaded_by || user.id,
       status: initialChant?.status || "pending",
@@ -593,6 +609,66 @@ export default function UploadChantModal({
                       ))}
                     </datalist>
                   </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Church Book</label>
+                    <select
+                      className="auth-input"
+                      value={book}
+                      onChange={(e) => setBook(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      {CHURCH_BOOKS.map((value) => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {book === "Psalter" && (
+                    <div className="auth-field upload-chant-form__field--full">
+                      <label className="auth-label">Psalm Number</label>
+                      <input
+                        className="auth-input"
+                        type="number"
+                        min={1}
+                        max={151}
+                        placeholder="e.g. 103"
+                        value={psalmNumber}
+                        onChange={(e) => setPsalmNumber(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {book === "Menaion" && (
+                    <>
+                      <div className="auth-field">
+                        <label className="auth-label">Month</label>
+                        <select
+                          className="auth-input"
+                          value={menaionMonth}
+                          onChange={(e) => setMenaionMonth(e.target.value)}
+                        >
+                          <option value="">None</option>
+                          {MENAION_MONTHS.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="auth-field">
+                        <label className="auth-label">Day</label>
+                        <input
+                          className="auth-input"
+                          type="number"
+                          min={1}
+                          max={31}
+                          placeholder="e.g. 15"
+                          value={menaionDay}
+                          onChange={(e) => setMenaionDay(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="upload-chant-form__upload-field">

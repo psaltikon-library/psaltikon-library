@@ -1,4 +1,4 @@
-export type Page = 'home' | 'library' | 'chant-detail' | 'phonetics' | 'booklets' | 'compositions' | 'about' | 'admin' | 'saved-items';
+export type Page = 'home' | 'library' | 'chant-detail' | 'phonetics' | 'booklets' | 'services' | 'compositions' | 'about' | 'admin' | 'saved-items';
 
 export interface Chant {
   id: string;
@@ -14,6 +14,13 @@ export interface Chant {
   phoneticsText?: string;
   composer?: string;
   category?: string;
+  /** Church book this chant is filed under on the Services directory. */
+  book?: string | null;
+  /** Psalter ordering. */
+  psalm_number?: number | null;
+  /** Menaion ordering (ecclesiastical calendar). */
+  menaion_month?: string | null;
+  menaion_day?: number | null;
 }
 
 export interface Booklet {

@@ -10,6 +10,10 @@ export interface ChantSubmissionInput {
   part?: string;
   language?: string;
   composer?: string;
+  book?: string;
+  psalmNumber?: string;
+  menaionMonth?: string;
+  menaionDay?: string;
 }
 
 export interface ChantSubmission {
@@ -22,6 +26,10 @@ export interface ChantSubmission {
   part: string | null;
   language: string | null;
   composer: string | null;
+  book: string | null;
+  psalm_number: number | null;
+  menaion_month: string | null;
+  menaion_day: number | null;
   pdf_paths: string[];
   pdf_labels: string[];
   status: 'pending' | 'approved' | 'rejected';
@@ -95,6 +103,12 @@ export async function createChantSubmission(
     part: input.part || null,
     language: input.language || null,
     composer: input.composer || null,
+    book: input.book || null,
+    psalm_number:
+      input.book === 'Psalter' && input.psalmNumber ? Number(input.psalmNumber) : null,
+    menaion_month: input.book === 'Menaion' ? input.menaionMonth || null : null,
+    menaion_day:
+      input.book === 'Menaion' && input.menaionDay ? Number(input.menaionDay) : null,
     pdf_paths: uploadedPaths,
     pdf_labels: labels,
     status: 'pending',
@@ -127,6 +141,10 @@ function devPendingSubmissions(): ChantSubmission[] {
       part: 'Cherubic Hymn',
       language: 'English',
       composer: 'Traditional',
+      book: 'Divine Liturgy',
+      psalm_number: null,
+      menaion_month: null,
+      menaion_day: null,
       pdf_paths: ['submissions/dev-sample.pdf'],
       pdf_labels: ['Cherubic Hymn'],
       status: 'pending',
@@ -185,6 +203,10 @@ export async function approveSubmission(submission: ChantSubmission): Promise<Ch
       part: submission.part,
       language: submission.language,
       composer: submission.composer,
+      book: submission.book,
+      psalm_number: submission.psalm_number,
+      menaion_month: submission.menaion_month,
+      menaion_day: submission.menaion_day,
       pdf_path: submission.pdf_paths[0] || null,
       uploaded_by: submission.submitted_by,
       status: 'approved',

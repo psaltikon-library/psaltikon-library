@@ -148,11 +148,11 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
     },
     {
       icon: icons.music,
-      title: 'Compositions',
-      subtitle: 'Beyond the feasts',
+      title: 'Services',
+      subtitle: 'The church books',
       description:
-        'General compositions not tied to a single feast — doxologies, troparia, and other liturgical pieces.',
-      page: 'compositions' as Page,
+        'Browse the Anastasimatarion, Divine Liturgy, Menaion, and Psalter in their traditional order.',
+      page: 'services' as Page,
     },
     {
       icon: icons.library,
