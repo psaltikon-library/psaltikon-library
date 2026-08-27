@@ -180,6 +180,42 @@ export function greatFeastOf(chant: Chant): { name: string; month: string } | nu
 
 export const isGreatFeastName = (value: string) => GREAT_FEAST_NAMES.includes(value);
 
+// Longest section name first so "Mid-Pentecost" is not swallowed by "Pentecost".
+const SECTION_MATCHERS: Record<string, Array<{ section: string; needle: string }>> =
+  Object.fromEntries(
+    Object.entries(SECTIONS_BY_BOOK).map(([bookName, sections]) => [
+      bookName,
+      sections
+        .map((section) => ({ section, needle: normalize(section) }))
+        .sort((a, b) => b.needle.length - a.needle.length),
+    ])
+  );
+
+/**
+ * Fall back to reading a Triodion / Pentecostarion section off a chant's other
+ * fields when its week has not been set explicitly, so chants already tagged
+ * with e.g. the feast "Pentecost" land in the right folder on their own.
+ */
+export function sectionFromChant(chant: Chant): string | null {
+  const matchers = SECTION_MATCHERS[text(chant.book)];
+  if (!matchers) return null;
+
+  for (const raw of [chant.feast, chant.service, chant.part, chant.title]) {
+    const value = normalize(text(raw));
+    if (!value) continue;
+    const hit = matchers.find((matcher) => value.includes(matcher.needle));
+    if (hit) return hit.section;
+  }
+  return null;
+}
+
+// Sections read in their traditional sequence, not alphabetically. The Triodion's
+// standing offices head its list, so they stay at the top of the book.
+const SECTION_ORDER = new Map<string, number>();
+[...TRIODION_SECTIONS, ...PENTECOSTARION_SECTIONS].forEach((section, index) => {
+  if (!SECTION_ORDER.has(section)) SECTION_ORDER.set(section, index);
+});
+
 const toneLevel: BookLevel = {
   label: 'Tone',
   valueOf: (chant) => text(chant.tone) || UNSORTED,
@@ -206,8 +242,13 @@ const feastLevel: BookLevel = {
 
 const weekThemeLevel: BookLevel = {
   label: 'Week',
-  valueOf: (chant) => text(chant.week_theme) || UNSORTED,
-  compare: alphaNumeric,
+  valueOf: (chant) => text(chant.week_theme) || sectionFromChant(chant) || UNSORTED,
+  compare: (a, b) => {
+    const ia = SECTION_ORDER.has(a) ? (SECTION_ORDER.get(a) as number) : Number.MAX_SAFE_INTEGER;
+    const ib = SECTION_ORDER.has(b) ? (SECTION_ORDER.get(b) as number) : Number.MAX_SAFE_INTEGER;
+    // Anything typed in by hand sorts after the traditional sequence.
+    return ia === ib ? alphaNumeric(a, b) : ia - ib;
+  },
 };
 
 /** Menaion month — a Great Feast falls back to its own calendar month. */
