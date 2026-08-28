@@ -1,5 +1,5 @@
 import { supabase } from './../lib/supabase';
-import { isChantHidden } from './chantVisibility';
+import { isChantPublic } from './chantVisibility';
 
 /**
  * The composer suggestion list is dynamic: it's simply every distinct composer
@@ -12,7 +12,7 @@ export async function loadComposers(): Promise<string[]> {
 
   const unique = new Set<string>();
   (data as Array<{ composer: string | null; status: string | null }>).forEach((row) => {
-    if (isChantHidden(row)) return;
+    if (!isChantPublic(row)) return;
     const value = typeof row.composer === 'string' ? row.composer.trim() : '';
     if (value) unique.add(value);
   });

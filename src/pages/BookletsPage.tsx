@@ -5,7 +5,7 @@ import { Booklet, Chant } from '../types';
 import BookletCard from '../components/BookletCard';
 import BookletEditorModal from '../components/BookletEditorModal';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
-import { excludeHiddenChants } from '../utils/chantVisibility';
+import { excludePrivateChants } from '../utils/chantVisibility';
 import {
   deleteBooklet,
   getBookletWithChants,
@@ -45,7 +45,7 @@ const BookletsPage = () => {
       .from('chants')
       .select('*')
       .order('created_at', { ascending: false });
-    setChants(excludeHiddenChants(resolveChantsWithDevFallback(error ? null : (data as Chant[] | null))));
+    setChants(excludePrivateChants(resolveChantsWithDevFallback(error ? null : (data as Chant[] | null))));
   };
 
   const loadMine = async () => {

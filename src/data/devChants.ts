@@ -15,5 +15,6 @@ export const DEV_CHANTS: Chant[] = [
     phoneticsText: 'Apolytikion tēs Anastaseōs',
     composer: 'Traditional',
     category: 'Dev Demo',
+    status: 'approved',
   },
 ];

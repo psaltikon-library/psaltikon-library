@@ -4,7 +4,7 @@ import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
-import { excludeHiddenChants } from '../utils/chantVisibility';
+import { excludePrivateChants } from '../utils/chantVisibility';
 import { getSavedChantIds } from '../utils/savedChants';
 
 interface HomePageProps {
@@ -188,7 +188,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         return;
       }
 
-      setFeaturedChants(excludeHiddenChants(resolveChantsWithDevFallback(data as Chant[] | null)).slice(0, 3));
+      setFeaturedChants(excludePrivateChants(resolveChantsWithDevFallback(data as Chant[] | null)).slice(0, 3));
       setIsLoadingFeatured(false);
     };
 

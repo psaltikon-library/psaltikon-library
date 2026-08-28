@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 import { Chant, Page } from '../types';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { getSavedChantIds } from '../utils/savedChants';
-import { excludeHiddenChants } from '../utils/chantVisibility';
+import { excludePrivateChants } from '../utils/chantVisibility';
 import {
   CHURCH_BOOKS,
   BOOK_DESCRIPTIONS,
@@ -90,7 +90,7 @@ const ServicesPage = ({ onViewChant, onNavigate }: ServicesPageProps) => {
         return;
       }
 
-      setChants(excludeHiddenChants(resolveChantsWithDevFallback(data as Chant[] | null)));
+      setChants(excludePrivateChants(resolveChantsWithDevFallback(data as Chant[] | null)));
       setIsLoading(false);
     };
 
