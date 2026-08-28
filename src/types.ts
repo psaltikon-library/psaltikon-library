@@ -14,6 +14,8 @@ export interface Chant {
   phoneticsText?: string;
   composer?: string;
   category?: string;
+  /** 'approved' | 'pending' | 'hidden' — see utils/chantVisibility. */
+  status?: string | null;
   /** Church book this chant is filed under on the Services directory. */
   book?: string | null;
   /** Psalter ordering. */

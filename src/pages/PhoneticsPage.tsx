@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
+import { excludeHiddenChants } from '../utils/chantVisibility';
 import { getSavedChantIds, saveChant, unsaveChant } from '../utils/savedChants';
 
 interface PhoneticsPageProps {
@@ -67,7 +68,7 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
         return;
       }
 
-      setPhoneticsChants(resolveChantsWithDevFallback(data as Chant[] | null).filter((chant) => chant.hasPhonetics));
+      setPhoneticsChants(excludeHiddenChants(resolveChantsWithDevFallback(data as Chant[] | null)).filter((chant) => chant.hasPhonetics));
       setIsLoadingChants(false);
     };
 

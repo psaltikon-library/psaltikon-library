@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
+import { excludeHiddenChants } from './chantVisibility';
 
 export async function saveChant(chantId: string): Promise<void> {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -80,9 +81,9 @@ export async function getSavedChants(): Promise<Chant[]> {
     return [];
   }
 
-  return data
-    .map((item: any) => item.chants)
-    .filter((chant: any) => chant !== null) as Chant[];
+  return excludeHiddenChants(
+    data.map((item: any) => item.chants).filter((chant: any) => chant !== null) as Chant[]
+  );
 }
 
 export async function getSavedChantIds(): Promise<string[]> {

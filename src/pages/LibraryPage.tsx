@@ -7,6 +7,7 @@ import AuthModal from "../components/AuthModal";
 import { supabase } from "../lib/supabase";
 import { Chant, Page } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
+import { isChantHidden } from "../utils/chantVisibility";
 import { getSavedChantIds } from "../utils/savedChants";
 import { compareFilterValues } from "../utils/filterOptions";
 
@@ -142,6 +143,9 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
   const filterOptions = useMemo(() => buildFilterOptions(chants), [chants]);
 
   const filteredChants = chants.filter((chant: Chant) => {
+    // Hidden chants stay in the library for admins only, so they can restore them.
+    if (!isAdmin && isChantHidden(chant)) return false;
+
     const query = searchQuery.toLowerCase();
     const englishTitle = (chant as any).english_title || (chant as any).englishTitle;
     const greekTitle = (chant as any).titleGreek || (chant as any).title_greek;

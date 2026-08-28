@@ -5,6 +5,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
 import { isChantSaved, saveChant, unsaveChant } from '../utils/savedChants';
 import { resolveChantWithDevFallback } from '../utils/chantFallback';
+import { isChantHidden, isAdminViewer } from '../utils/chantVisibility';
 import { recordChantView } from '../utils/analytics';
 import UploadChantModal from '../components/UploadChantModal';
 import { ChantPdfRow, loadChantPdfs } from '../utils/chantPdfs';
@@ -457,7 +458,18 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
         return;
       }
 
-      setChant(resolveChantWithDevFallback([data as Chant], chantId));
+      const loadedChant = resolveChantWithDevFallback([data as Chant], chantId);
+
+      // A hidden chant is withdrawn from the site, so even a direct link to it
+      // reads as missing for everyone but an admin.
+      if (isChantHidden(loadedChant) && !isAdminViewer()) {
+        setChant(null);
+        setChantError('The requested chant could not be found.');
+        setIsLoadingChant(false);
+        return;
+      }
+
+      setChant(loadedChant);
       setIsLoadingChant(false);
 
       void recordChantView(chantId);
