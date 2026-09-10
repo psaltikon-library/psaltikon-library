@@ -1294,36 +1294,6 @@ a:hover {
   border-color: var(--burgundy);
 }
 
-/* Minimized state — a compact pill the reader can click to reopen. */
-.booklet-bubble--pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1rem;
-  font-family: var(--font-ui);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
-  border: none;
-  border-radius: 999px;
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
-}
-
-.booklet-bubble-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  font-size: 0.75rem;
-  color: var(--burgundy-dark);
-  background: var(--gold-light);
-  border-radius: 999px;
-}
-
 @media (max-width: 520px) {
   .booklet-bubble--card {
     left: 1rem;
@@ -1331,6 +1301,47 @@ a:hover {
     transform: none;
     justify-content: center;
   }
+}
+
+/* Minimized state — a booklet icon tucked into the navbar, beside the menu. */
+.booklet-nav-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
+  color: var(--gold-light);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.booklet-nav-btn:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.booklet-nav-btn__count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--burgundy-dark);
+  background: var(--gold-light);
+  border: 2px solid var(--bg-surface);
+  border-radius: 999px;
 }
 
 /* ── Nested "island" button icon ── */

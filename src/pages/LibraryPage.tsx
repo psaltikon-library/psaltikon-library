@@ -3,8 +3,6 @@ import OrthodoxCross from "../components/OrthodoxCross";
 import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
-import BookletBuilderModal from "../components/BookletBuilderModal";
-import AuthModal from "../components/AuthModal";
 import { supabase } from "../lib/supabase";
 import { Chant, Page } from "../types";
 import { resolveChantsWithDevFallback } from "../utils/chantFallback";
@@ -15,6 +13,8 @@ import { compareFilterValues } from "../utils/filterOptions";
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
   onNavigate?: (page: Page) => void;
+  bookletChantIds: string[];
+  onToggleBookletChant: (chant: Chant) => void;
 }
 
 const buildFilterOptions = (chants: Chant[]) => {
@@ -40,7 +40,7 @@ const buildFilterOptions = (chants: Chant[]) => {
   };
 };
 
-const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
+const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: LibraryPageProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingChant, setEditingChant] = useState<Chant | null>(null);
@@ -63,20 +63,6 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
   const [isLoadingChants, setIsLoadingChants] = useState(true);
   const [chantsError, setChantsError] = useState("");
   const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
-
-  // Booklet selection: chant ids in the order they were picked.
-  const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
-  const [bookletModalOpen, setBookletModalOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-
-  const toggleBookletChant = (chantId: string) => {
-    setBookletChantIds((current) =>
-      current.includes(chantId)
-        ? current.filter((id) => id !== chantId)
-        : [...current, chantId]
-    );
-  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeast, setSelectedFeast] = useState("All Feasts");
@@ -523,53 +509,6 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
               ))}
             </select>
           </motion.div>
-
-          {/* Booklet Builder Preview */}
-          <motion.div
-            style={{
-              marginTop: "2rem",
-              padding: "1rem",
-              background:
-                "linear-gradient(135deg, rgba(139, 38, 53, 0.05), rgba(201, 162, 39, 0.05))",
-              borderRadius: "12px",
-              border: "1px dashed var(--border)",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            <h4
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: "0.85rem",
-                marginBottom: "0.5rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              📚 Booklet Builder
-            </h4>
-            <p
-              style={{
-                fontSize: "0.8rem",
-                color: "var(--text-muted)",
-                marginBottom: "0.75rem",
-              }}
-            >
-              Select chants to create a custom service booklet
-            </p>
-            <motion.button
-              className={`btn btn-sm ${bookletChantIds.length > 0 ? "btn-primary" : "btn-secondary"}`}
-              style={{ width: "100%" }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setBookletModalOpen(true)}
-            >
-              {bookletChantIds.length}{" "}
-              {bookletChantIds.length === 1 ? "chant" : "chants"} selected
-            </motion.button>
-          </motion.div>
         </motion.aside>
 
         {/* Main Content */}
@@ -710,7 +649,10 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
                     onUnsave={handleUnsavedChantId}
                     showSaveButton={true}
                     index={index}
-                    onToggleBooklet={toggleBookletChant}
+                    onToggleBooklet={(id) => {
+                      const target = chants.find((item) => item.id === id);
+                      if (target) onToggleBookletChant(target);
+                    }}
                     isInBooklet={bookletChantIds.includes(chant.id)}
                   />
                 ))}
@@ -764,32 +706,6 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
           setEditingChant(null);
         }}
         onSaved={handleSavedChant}
-      />
-
-      <BookletBuilderModal
-        open={bookletModalOpen}
-        onClose={() => setBookletModalOpen(false)}
-        selectedChants={bookletChantIds
-          .map((id) => chants.find((chant) => chant.id === id))
-          .filter((chant): chant is Chant => !!chant)}
-        onRemoveChant={(id) =>
-          setBookletChantIds((current) => current.filter((chantId) => chantId !== id))
-        }
-        onClearSelection={() => setBookletChantIds([])}
-        onNavigate={onNavigate}
-        onRequestLogin={() => {
-          setAuthMode("login");
-          setAuthModalOpen(true);
-        }}
-      />
-
-      {/* Rendered after the builder so it stacks above it; the builder picks up
-          the new session itself via onAuthStateChange. */}
-      <AuthModal
-        open={authModalOpen}
-        mode={authMode}
-        onClose={() => setAuthModalOpen(false)}
-        onSwitchMode={setAuthMode}
       />
     </>
   );

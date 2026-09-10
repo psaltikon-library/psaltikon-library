@@ -12,7 +12,9 @@ import AboutPage from './pages/AboutPage';
 import AdminPage from './pages/AdminPage';
 import SavedItemsPage from './pages/SavedItemsPage';
 import SuggestionModal from './components/SuggestionModal';
-import { Page } from './types';
+import BookletBuilderModal from './components/BookletBuilderModal';
+import AuthModal from './components/AuthModal';
+import { Page, Chant } from './types';
 import { recordChantView, recordPageView } from './utils/analytics';
 
 const STORAGE_PAGE_KEY = 'psaltikon_current_page';
@@ -80,6 +82,33 @@ function App() {
   const [selectedChantId, setSelectedChantId] = useState<string | null>(initialRoute.chantId);
   const [isScrolled, setIsScrolled] = useState(false);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
+
+  // Booklet selection lives here so it persists across pages and the navbar can
+  // show a count while the builder bubble is minimized. Full Chant objects are
+  // kept (not just ids) so the builder modal can render them from any page.
+  const [bookletChants, setBookletChants] = useState<Chant[]>([]);
+  const [bookletMinimized, setBookletMinimized] = useState(false);
+  const [bookletModalOpen, setBookletModalOpen] = useState(false);
+  const [bookletAuthOpen, setBookletAuthOpen] = useState(false);
+  const [bookletAuthMode, setBookletAuthMode] = useState<'login' | 'signup'>('login');
+
+  const bookletChantIds = bookletChants.map((chant) => chant.id);
+
+  const toggleBookletChant = useCallback((chant: Chant) => {
+    setBookletChants((current) =>
+      current.some((existing) => existing.id === chant.id)
+        ? current.filter((existing) => existing.id !== chant.id)
+        : [...current, chant]
+    );
+  }, []);
+
+  // Once the selection empties, the bubble/navbar icon disappear — reset the
+  // minimized flag so the next booklet starts expanded.
+  useEffect(() => {
+    if (bookletChants.length === 0 && bookletMinimized) {
+      setBookletMinimized(false);
+    }
+  }, [bookletChants.length, bookletMinimized]);
 
   // The static HTML loader (index.html) is only there for a slow boot; drop it
   // as soon as the app has mounted so the home page shows straight away.
@@ -171,9 +200,11 @@ function App() {
     switch (currentPage) {
       case 'home':
         return (
-          <HomePage 
-            onNavigate={navigateTo} 
+          <HomePage
+            onNavigate={navigateTo}
             onViewChant={navigateToChant}
+            bookletChantIds={bookletChantIds}
+            onToggleBookletChant={toggleBookletChant}
           />
         );
       case 'library':
@@ -181,6 +212,8 @@ function App() {
           <LibraryPage
             onViewChant={navigateToChant}
             onNavigate={navigateTo}
+            bookletChantIds={bookletChantIds}
+            onToggleBookletChant={toggleBookletChant}
           />
         );
       case 'chant-detail':
@@ -229,7 +262,14 @@ function App() {
           />
         );
       default:
-        return <HomePage onNavigate={navigateTo} onViewChant={navigateToChant} />;
+        return (
+          <HomePage
+            onNavigate={navigateTo}
+            onViewChant={navigateToChant}
+            bookletChantIds={bookletChantIds}
+            onToggleBookletChant={toggleBookletChant}
+          />
+        );
     }
   };
 
@@ -246,6 +286,9 @@ function App() {
           onNavigate={navigateTo}
           isScrolled={isScrolled}
           onOpenSuggestion={() => setSuggestionOpen(true)}
+          bookletCount={bookletChants.length}
+          bookletMinimized={bookletMinimized}
+          onExpandBooklet={() => setBookletMinimized(false)}
         />
 
         <AnimatePresence mode="wait">
@@ -270,6 +313,75 @@ function App() {
         onSubmitted={() => {
           setSuggestionOpen(false);
         }}
+      />
+
+      {/* Floating booklet-builder bubble, pinned near the top of the page and
+          shared across pages. Minimizing tucks it into the navbar icon. */}
+      <AnimatePresence>
+        {bookletChants.length > 0 && !bookletMinimized && (
+          <motion.div
+            key="booklet-bubble"
+            className="booklet-bubble booklet-bubble--card"
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            role="region"
+            aria-label="Booklet builder"
+          >
+            <span className="booklet-bubble-label">
+              <span aria-hidden="true">📚</span> {bookletChants.length}{' '}
+              {bookletChants.length === 1 ? 'chant' : 'chants'} selected
+            </span>
+            <div className="booklet-bubble-actions">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setBookletChants([])}
+              >
+                Clear
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setBookletModalOpen(true)}
+              >
+                Open Builder
+              </button>
+              <button
+                type="button"
+                className="booklet-bubble-min"
+                onClick={() => setBookletMinimized(true)}
+                aria-label="Minimize booklet builder"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <BookletBuilderModal
+        open={bookletModalOpen}
+        onClose={() => setBookletModalOpen(false)}
+        selectedChants={bookletChants}
+        onRemoveChant={(id) =>
+          setBookletChants((current) => current.filter((chant) => chant.id !== id))
+        }
+        onClearSelection={() => setBookletChants([])}
+        onNavigate={navigateTo}
+        onRequestLogin={() => {
+          setBookletAuthMode('login');
+          setBookletAuthOpen(true);
+        }}
+      />
+
+      {/* Rendered after the builder so it stacks above it; the builder picks up
+          the new session itself via onAuthStateChange. */}
+      <AuthModal
+        open={bookletAuthOpen}
+        mode={bookletAuthMode}
+        onClose={() => setBookletAuthOpen(false)}
+        onSwitchMode={setBookletAuthMode}
       />
     </>
   );

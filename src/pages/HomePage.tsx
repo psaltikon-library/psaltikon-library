@@ -1,10 +1,8 @@
-import { AnimatePresence, motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
+import { motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
 import OrthodoxCross from '../components/OrthodoxCross';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
-import BookletBuilderModal from '../components/BookletBuilderModal';
-import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { excludePrivateChants } from '../utils/chantVisibility';
@@ -13,6 +11,8 @@ import { getSavedChantIds } from '../utils/savedChants';
 interface HomePageProps {
   onNavigate: (page: Page) => void;
   onViewChant: (id: string) => void;
+  bookletChantIds: string[];
+  onToggleBookletChant: (chant: Chant) => void;
 }
 
 const iconProps = {
@@ -93,7 +93,7 @@ const icons = {
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
-const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
+const HomePage = ({ onNavigate, onViewChant, bookletChantIds, onToggleBookletChant }: HomePageProps) => {
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -107,30 +107,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   const [featuredChants, setFeaturedChants] = useState<Chant[]>([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
   const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
-
-  // Booklet selection: chant ids in the order they were picked — mirrors the
-  // Library so the featured cards build a booklet the same way.
-  const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
-  const [bookletBarMinimized, setBookletBarMinimized] = useState(false);
-  const [bookletModalOpen, setBookletModalOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-
-  const toggleBookletChant = (chantId: string) => {
-    setBookletChantIds((current) =>
-      current.includes(chantId)
-        ? current.filter((id) => id !== chantId)
-        : [...current, chantId]
-    );
-  };
-
-  // Once the selection is empty the bubble is gone, so expand it again for the
-  // next time the reader starts a booklet.
-  useEffect(() => {
-    if (bookletChantIds.length === 0 && bookletBarMinimized) {
-      setBookletBarMinimized(false);
-    }
-  }, [bookletChantIds.length, bookletBarMinimized]);
 
   const handleSavedChantId = (chantId: string) => {
     setSavedChantIds((current) =>
@@ -233,7 +209,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   }, []);
 
   return (
-    <>
     <MotionConfig reducedMotion="user">
       {/* ── Hero ── */}
       <section className="hero" ref={heroRef}>
@@ -399,7 +374,10 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
                   onUnsave={handleUnsavedChantId}
                   showSaveButton={true}
                   index={index}
-                  onToggleBooklet={toggleBookletChant}
+                  onToggleBooklet={(id) => {
+                    const target = featuredChants.find((item) => item.id === id);
+                    if (target) onToggleBookletChant(target);
+                  }}
                   isInBooklet={bookletChantIds.includes(chant.id)}
                 />
               ))}
@@ -494,96 +472,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         </div>
       </section>
     </MotionConfig>
-
-      {/* Floating booklet-builder bubble, pinned near the top of the page.
-          The reader can minimize it to a small pill if it's in the way. */}
-      <AnimatePresence>
-        {bookletChantIds.length > 0 && (
-          bookletBarMinimized ? (
-            <motion.button
-              key="booklet-bubble-pill"
-              type="button"
-              className="booklet-bubble booklet-bubble--pill"
-              onClick={() => setBookletBarMinimized(false)}
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label={`Show booklet builder — ${bookletChantIds.length} selected`}
-            >
-              <span aria-hidden="true">📚</span>
-              <span className="booklet-bubble-count">{bookletChantIds.length}</span>
-            </motion.button>
-          ) : (
-            <motion.div
-              key="booklet-bubble-card"
-              className="booklet-bubble booklet-bubble--card"
-              initial={{ opacity: 0, y: -16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              role="region"
-              aria-label="Booklet builder"
-            >
-              <span className="booklet-bubble-label">
-                <span aria-hidden="true">📚</span> {bookletChantIds.length}{' '}
-                {bookletChantIds.length === 1 ? 'chant' : 'chants'} selected
-              </span>
-              <div className="booklet-bubble-actions">
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setBookletChantIds([])}
-                >
-                  Clear
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setBookletModalOpen(true)}
-                >
-                  Open Builder
-                </button>
-                <button
-                  type="button"
-                  className="booklet-bubble-min"
-                  onClick={() => setBookletBarMinimized(true)}
-                  aria-label="Minimize booklet builder"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
-              </div>
-            </motion.div>
-          )
-        )}
-      </AnimatePresence>
-
-      <BookletBuilderModal
-        open={bookletModalOpen}
-        onClose={() => setBookletModalOpen(false)}
-        selectedChants={bookletChantIds
-          .map((id) => featuredChants.find((chant) => chant.id === id))
-          .filter((chant): chant is Chant => !!chant)}
-        onRemoveChant={(id) =>
-          setBookletChantIds((current) => current.filter((chantId) => chantId !== id))
-        }
-        onClearSelection={() => setBookletChantIds([])}
-        onNavigate={onNavigate}
-        onRequestLogin={() => {
-          setAuthMode('login');
-          setAuthModalOpen(true);
-        }}
-      />
-
-      {/* Rendered after the builder so it stacks above it; the builder picks up
-          the new session itself via onAuthStateChange. */}
-      <AuthModal
-        open={authModalOpen}
-        mode={authMode}
-        onClose={() => setAuthModalOpen(false)}
-        onSwitchMode={setAuthMode}
-      />
-    </>
   );
 };
 

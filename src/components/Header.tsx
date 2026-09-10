@@ -9,9 +9,23 @@ interface HeaderProps {
   onNavigate: (page: Page) => void;
   isScrolled: boolean;
   onOpenSuggestion: () => void;
+  /** Number of chants in the in-progress booklet. */
+  bookletCount?: number;
+  /** True when the booklet bubble is minimized into the navbar. */
+  bookletMinimized?: boolean;
+  /** Reopen the booklet bubble from the navbar icon. */
+  onExpandBooklet?: () => void;
 }
 
-const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: HeaderProps) => {
+const Header = ({
+  currentPage,
+  onNavigate,
+  isScrolled,
+  onOpenSuggestion,
+  bookletCount = 0,
+  bookletMinimized = false,
+  onExpandBooklet,
+}: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
@@ -258,6 +272,29 @@ const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: Heade
                 </motion.button>
               )}
             </div>
+
+            <AnimatePresence>
+              {bookletCount > 0 && bookletMinimized && (
+                <motion.button
+                  type="button"
+                  className="booklet-nav-btn"
+                  onClick={onExpandBooklet}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label={`Open booklet builder — ${bookletCount} selected`}
+                  title="Booklet builder"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z" />
+                    <path d="M4 20a2 2 0 0 1 2-2h14" />
+                  </svg>
+                  <span className="booklet-nav-btn__count">{bookletCount}</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
 
             <motion.button
               className="menu-button"
