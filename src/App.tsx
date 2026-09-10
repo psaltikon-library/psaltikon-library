@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import OrthodoxCross from './components/OrthodoxCross';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -51,79 +50,6 @@ const getRouteState = (): { page: Page; chantId: string | null } => {
   return { page: 'home', chantId: null };
 };
 
-// Loading screen component
-const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
-  useEffect(() => {
-    // Run once on mount. onComplete only calls the stable setIsLoading, so we
-    // intentionally omit it from deps — otherwise a new onComplete identity on
-    // every App re-render (e.g. from the scroll listener) resets the timer and
-    // the splash can hang.
-    const timer = setTimeout(onComplete, 2000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <motion.div 
-      className="loading-screen"
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-    >
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "backOut" }}
-      >
-        <motion.div
-          className="loading-cross"
-          animate={{ 
-            scale: [1, 1.1, 1],
-            opacity: [1, 0.7, 1]
-          }}
-          transition={{ 
-            duration: 1.5, 
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          <OrthodoxCross size={48} />
-        </motion.div>
-      </motion.div>
-      <motion.p 
-        className="loading-text"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-      >
-        PSALTIKON LIBRARY
-      </motion.p>
-      <motion.div
-        style={{
-          width: 120,
-          height: 2,
-          background: 'var(--border)',
-          borderRadius: 2,
-          marginTop: 24,
-          overflow: 'hidden'
-        }}
-      >
-        <motion.div
-          style={{
-            width: '100%',
-            height: '100%',
-            background: 'var(--burgundy)',
-            transformOrigin: 'left'
-          }}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 1.8, ease: "easeOut" }}
-        />
-      </motion.div>
-    </motion.div>
-  );
-};
-
 // Page transition variants
 const pageVariants = {
   initial: {
@@ -152,9 +78,14 @@ function App() {
   const initialRoute = getRouteState();
   const [currentPage, setCurrentPage] = useState<Page>(initialRoute.page);
   const [selectedChantId, setSelectedChantId] = useState<string | null>(initialRoute.chantId);
-  const [isLoading, setIsLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
+
+  // The static HTML loader (index.html) is only there for a slow boot; drop it
+  // as soon as the app has mounted so the home page shows straight away.
+  useEffect(() => {
+    document.getElementById('app-loader')?.remove();
+  }, []);
 
   const syncRoute = useCallback(
     (page: Page, chantId: string | null, mode: 'push' | 'replace' = 'push') => {
@@ -304,45 +235,35 @@ function App() {
 
   return (
     <>
-      <AnimatePresence mode="wait">
-      {isLoading ? (
-        <LoadingScreen key="loading" onComplete={() => setIsLoading(false)} />
-      ) : (
-        <motion.div
-          key="app"
-          className="app"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Header 
-            currentPage={currentPage} 
-            onNavigate={navigateTo}
-            isScrolled={isScrolled}
-            onOpenSuggestion={() => setSuggestionOpen(true)}
-          />
-          
-          <AnimatePresence mode="wait">
-            <motion.main
-              key={currentPage}
-              variants={pageVariants}
-              initial="initial"
-              animate="enter"
-              exit="exit"
-              style={{ flex: 1 }}
-            >
-              {renderPage()}
-            </motion.main>
-          </AnimatePresence>
-          
-          <Footer onNavigate={navigateTo} />
-        </motion.div>
-      )}
-      </AnimatePresence>
+      <motion.div
+        className="app"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Header
+          currentPage={currentPage}
+          onNavigate={navigateTo}
+          isScrolled={isScrolled}
+          onOpenSuggestion={() => setSuggestionOpen(true)}
+        />
 
-      {/* Rendered outside the mode="wait" AnimatePresence — as a sibling it was a
-          second child, which breaks wait-mode and could strand the splash. It
-          manages its own enter/exit internally. */}
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={currentPage}
+            variants={pageVariants}
+            initial="initial"
+            animate="enter"
+            exit="exit"
+            style={{ flex: 1 }}
+          >
+            {renderPage()}
+          </motion.main>
+        </AnimatePresence>
+
+        <Footer onNavigate={navigateTo} />
+      </motion.div>
+
       <SuggestionModal
         open={suggestionOpen}
         onClose={() => setSuggestionOpen(false)}

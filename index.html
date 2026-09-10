@@ -7,9 +7,59 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+    <style>
+      /* Loading screen that only appears if the app is slow to boot. It starts
+         invisible and fades in after a short delay, so a fast load never shows
+         it — React removes #app-loader on mount before the fade begins. */
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #F8F6F3;
+        opacity: 0;
+        animation: psaltikonLoaderIn 0.4s ease 0.5s forwards;
+      }
+      #app-loader .psaltikon-loader__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      #app-loader svg {
+        animation: psaltikonLoaderPulse 1.5s ease-in-out infinite;
+      }
+      #app-loader .psaltikon-loader__text {
+        font-family: 'Cinzel', serif;
+        font-size: 0.8rem;
+        letter-spacing: 0.25em;
+        color: #8A847A;
+      }
+      @keyframes psaltikonLoaderIn { to { opacity: 1; } }
+      @keyframes psaltikonLoaderPulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.08); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #app-loader svg { animation: none; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="app-loader" aria-hidden="true">
+      <div class="psaltikon-loader__inner">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#8B2635" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2.5" x2="12" y2="21.5" />
+          <line x1="8.5" y1="5.5" x2="15.5" y2="5.5" />
+          <line x1="5.5" y1="9" x2="18.5" y2="9" />
+          <line x1="8" y1="16.5" x2="16" y2="13.5" />
+        </svg>
+        <div class="psaltikon-loader__text">PSALTIKON LIBRARY</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
