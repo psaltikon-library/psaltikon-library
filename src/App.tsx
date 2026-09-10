@@ -54,12 +54,19 @@ const getRouteState = (): { page: Page; chantId: string | null } => {
 // Loading screen component
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
   useEffect(() => {
-    // Run once on mount. onComplete only calls the stable setIsLoading, so we
-    // intentionally omit it from deps — otherwise a new onComplete identity on
-    // every App re-render (e.g. from the scroll listener) resets the timer and
-    // the splash can hang.
-    const timer = setTimeout(onComplete, 2000);
-    return () => clearTimeout(timer);
+    // Dismiss once the browser has painted the first frame rather than after a
+    // fixed delay. requestAnimationFrame runs right before a paint and is paused
+    // while the tab is hidden, so the splash never hangs on a frozen timer — it
+    // clears the moment the page is actually visible and painted. Two frames:
+    // the first lets the splash render, the second confirms a paint landed.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => onComplete());
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
