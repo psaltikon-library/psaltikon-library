@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import OrthodoxCross from "../components/OrthodoxCross";
 import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
@@ -381,7 +382,7 @@ const LibraryPage = ({ onViewChant, onNavigate }: LibraryPageProps) => {
           transition={{ duration: 0.5 }}
         >
           <div className="sidebar-header">
-            <h3 className="sidebar-title">☦ Filters</h3>
+            <h3 className="sidebar-title"><OrthodoxCross size={15} className="cross-inline" /> Filters</h3>
             <motion.button
               className="btn btn-ghost btn-sm"
               onClick={clearFilters}

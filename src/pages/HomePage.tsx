@@ -1,4 +1,5 @@
 import { motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
+import OrthodoxCross from '../components/OrthodoxCross';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
@@ -281,7 +282,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.8, ease: EASE_OUT }}
           >
-            <span className="verse-mark">☦</span>
+            <span className="verse-mark"><OrthodoxCross size={26} /></span>
             <blockquote className="verse-text">He who sings prays twice.</blockquote>
             <figcaption className="verse-source">St. Augustine of Hippo</figcaption>
           </motion.figure>
@@ -434,7 +435,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         <div className="container container-narrow">
           <div className="byzantine-divider">
             <div className="byzantine-divider-line" />
-            <span className="byzantine-divider-icon">☦</span>
+            <span className="byzantine-divider-icon"><OrthodoxCross size={20} /></span>
             <div className="byzantine-divider-line" />
           </div>
           <motion.figure

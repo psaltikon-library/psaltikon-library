@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import OrthodoxCross from '../components/OrthodoxCross';
 import { motion } from 'framer-motion';
 import { Easing } from 'framer-motion';
 import ContactModal from '../components/ContactModal';
@@ -52,7 +53,7 @@ const AboutPage = () => {
           }}
         >
           <motion.span
-            style={{ fontSize: '3rem', display: 'block', marginBottom: '1.5rem' }}
+            style={{ fontSize: '3rem', display: 'block', marginBottom: '1.5rem', color: 'var(--gold-dark)' }}
             animate={{ 
               scale: [1, 1.05, 1],
               rotate: [0, 2, -2, 0]
@@ -63,7 +64,7 @@ const AboutPage = () => {
               ease: "easeInOut"
             }}
           >
-            ☦
+            <OrthodoxCross size={40} />
           </motion.span>
           <h1 style={{ marginBottom: '1rem' }}>Our Mission</h1>
           <p style={{ 
@@ -90,7 +91,7 @@ const AboutPage = () => {
       >
         {/* Introduction */}
         <motion.div className="about-section" variants={itemVariants}>
-          <h3>☦ A Sacred Treasury</h3>
+          <h3><OrthodoxCross size={17} className="cross-inline" /> A Sacred Treasury</h3>
           <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--text-secondary)' }}>
             The Psaltikon Library exists as a humble offering to the Orthodox Church — a digital 
             treasury where the ancient and beautiful tradition of Byzantine chant can be preserved, 
@@ -110,7 +111,7 @@ const AboutPage = () => {
           variants={itemVariants}
           style={{ margin: '3rem 0' }}
         >
-          <span className="quote-icon">☦</span>
+          <span className="quote-icon"><OrthodoxCross size={18} /></span>
           <p className="quote-text">
             "Praise the Lord with the sound of the trumpet; praise Him with the psaltery and harp."
           </p>
@@ -119,7 +120,7 @@ const AboutPage = () => {
 
         {/* Accessibility Focus */}
         <motion.div className="about-section" variants={itemVariants}>
-          <h3>☦ Accessibility for All</h3>
+          <h3><OrthodoxCross size={17} className="cross-inline" /> Accessibility for All</h3>
           <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--text-secondary)' }}>
             One of our primary concerns is accessibility. Not everyone can read Greek, Arabic, 
             Church Slavonic, or even Byzantine notation. This should not prevent any Orthodox 
@@ -135,7 +136,7 @@ const AboutPage = () => {
 
         {/* Mission Points */}
         <motion.div className="about-section" variants={itemVariants}>
-          <h3>☦ What We Strive For</h3>
+          <h3><OrthodoxCross size={17} className="cross-inline" /> What We Strive For</h3>
           <ul className="about-list">
             {missionPoints.map((point, index) => (
               <motion.li 
@@ -158,7 +159,7 @@ const AboutPage = () => {
           variants={itemVariants}
           style={{ margin: '3rem 0' }}
         >
-          <span className="quote-icon">☦</span>
+          <span className="quote-icon"><OrthodoxCross size={18} /></span>
           <p className="quote-text">
             "Singing belongs to one who loves."
           </p>
@@ -167,7 +168,7 @@ const AboutPage = () => {
 
         {/* Service */}
         <motion.div className="about-section" variants={itemVariants}>
-          <h3>☦ In Service of the Church</h3>
+          <h3><OrthodoxCross size={17} className="cross-inline" /> In Service of the Church</h3>
           <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--text-secondary)' }}>
             This project exists for one purpose: the service of the Orthodox Church and its 
             liturgical tradition. We are not a commercial enterprise, nor an academic institution. 
@@ -183,7 +184,7 @@ const AboutPage = () => {
 
         {/* Future Vision */}
         <motion.div className="about-section" variants={itemVariants}>
-          <h3>☦ Looking Forward</h3>
+          <h3><OrthodoxCross size={17} className="cross-inline" /> Looking Forward</h3>
           <p style={{ fontSize: '1.1rem', lineHeight: 1.8, color: 'var(--text-secondary)' }}>
             We envision a future where this library becomes a comprehensive resource for 
             Orthodox Byzantine chant — catalogued by feast, service, and part of the service; 
@@ -203,7 +204,7 @@ const AboutPage = () => {
           variants={itemVariants}
           style={{ margin: '3rem 0' }}
         >
-          <span className="quote-icon">☦</span>
+          <span className="quote-icon"><OrthodoxCross size={18} /></span>
           <p className="quote-text">
             "Let everything that has breath praise the Lord!"
           </p>
@@ -227,7 +228,7 @@ const AboutPage = () => {
               ease: "easeInOut"
             }}
           >
-            ☦
+            <OrthodoxCross size={36} />
           </motion.div>
           <p className="doxology-text" style={{ marginTop: '1rem' }}>
             "To the glory of the Holy Trinity and for the edification of the faithful."

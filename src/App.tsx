@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import OrthodoxCross from './components/OrthodoxCross';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -86,7 +87,7 @@ const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
             ease: "easeInOut"
           }}
         >
-          ☦
+          <OrthodoxCross size={48} />
         </motion.div>
       </motion.div>
       <motion.p 

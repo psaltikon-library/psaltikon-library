@@ -1091,7 +1091,7 @@ a:hover {
   inset: 0;
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139, 38, 53, 0.03), transparent 70%),
-    url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%238B2635' fill-opacity='0.03'%3E%3Ctext x='40' y='50' font-size='50' text-anchor='middle' font-family='serif'%3E☦%3C/text%3E%3C/g%3E%3C/svg%3E") repeat;
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2780%27%20viewBox%3D%270%200%2080%2080%27%20fill%3D%27none%27%20stroke%3D%27%25238B2635%27%20stroke-opacity%3D%270.04%27%20stroke-width%3D%272.5%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2740%27%20y1%3D%2720%27%20x2%3D%2740%27%20y2%3D%2760%27%2F%3E%3Cline%20x1%3D%2732%27%20y1%3D%2728%27%20x2%3D%2748%27%20y2%3D%2728%27%2F%3E%3Cline%20x1%3D%2725%27%20y1%3D%2734%27%20x2%3D%2755%27%20y2%3D%2734%27%2F%3E%3Cline%20x1%3D%2732%27%20y1%3D%2752%27%20x2%3D%2748%27%20y2%3D%2746%27%2F%3E%3C%2Fsvg%3E") repeat;
   background-size: 80px 80px;
 }
 
@@ -2328,10 +2328,13 @@ a:hover {
 }
 
 .about-list li::before {
-  content: '☦';
+  content: '';
   position: absolute;
   left: 0;
-  color: var(--burgundy);
+  top: 0.3em;
+  width: 0.85em;
+  height: 0.85em;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%25238B2635%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%272.5%27%20x2%3D%2712%27%20y2%3D%2721.5%27%2F%3E%3Cline%20x1%3D%278.5%27%20y1%3D%275.5%27%20x2%3D%2715.5%27%20y2%3D%275.5%27%2F%3E%3Cline%20x1%3D%275.5%27%20y1%3D%279%27%20x2%3D%2718.5%27%20y2%3D%279%27%2F%3E%3Cline%20x1%3D%278%27%20y1%3D%2716.5%27%20x2%3D%2716%27%20y2%3D%2713.5%27%2F%3E%3C%2Fsvg%3E") no-repeat center / contain;
 }
 
 .doxology {
@@ -4680,4 +4683,11 @@ a:hover {
   font-size: 0.88rem;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* Inline three-bar cross used as a heading marker */
+.cross-inline {
+  display: inline-block;
+  vertical-align: -0.14em;
+  margin-right: 0.35em;
 }

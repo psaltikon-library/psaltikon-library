@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import OrthodoxCross from "./OrthodoxCross";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 
@@ -162,7 +163,7 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
           >
             <div className="auth-modal-header">
               <div className="auth-modal-brand">
-                <div className="auth-modal-icon">☦</div>
+                <div className="auth-modal-icon"><OrthodoxCross size={30} /></div>
                 <div>
                   <div className="auth-modal-app">Psaltikon Library</div>
                   <div className="auth-modal-title">

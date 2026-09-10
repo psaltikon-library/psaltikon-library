@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import OrthodoxCross from '../components/OrthodoxCross';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Chant } from '../types';
@@ -360,7 +361,7 @@ const PhoneticsPage = ({ onViewChant }: PhoneticsPageProps) => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h3 style={{ marginBottom: '1rem' }}>☦ About Phonetic Transliteration</h3>
+            <h3 style={{ marginBottom: '1rem' }}><OrthodoxCross size={17} className="cross-inline" /> About Phonetic Transliteration</h3>
             <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto' }}>
               Our phonetic transliterations are designed to help non-Arabic speakers learn and sing 
               these beautiful chants. The transliteration follows standard romanization principles, 
