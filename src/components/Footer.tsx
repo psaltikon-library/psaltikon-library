@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Page } from '../types';
+import OrthodoxCross from './OrthodoxCross';
 
 interface FooterProps {
   onNavigate: (page: Page) => void;
@@ -38,7 +39,7 @@ const Footer = ({ onNavigate }: FooterProps) => {
               whileHover={{ rotate: [0, -10, 10, 0] }}
               transition={{ duration: 0.5 }}
             >
-              ☦
+              <OrthodoxCross size={24} />
             </motion.span>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 600 }}>
               Psaltikon Library
@@ -65,11 +66,11 @@ const Footer = ({ onNavigate }: FooterProps) => {
             </li>
             <li>
               <motion.a 
-                onClick={() => onNavigate('phonetics')}
+                onClick={() => onNavigate('booklets')}
                 whileHover={{ x: 5 }}
                 style={{ cursor: 'pointer' }}
               >
-                Phonetics
+                Booklets
               </motion.a>
             </li>
             <li>

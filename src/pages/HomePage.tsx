@@ -140,14 +140,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
 
   const collections = [
     {
-      icon: icons.languages,
-      title: 'Phonetics',
-      subtitle: 'Antiochian tradition',
-      description:
-        'Arabic chant set with phonetic transliteration, opening the rich Antiochian repertoire to non-Arabic speakers.',
-      page: 'phonetics' as Page,
-    },
-    {
       icon: icons.music,
       title: 'Services',
       subtitle: 'The church books',

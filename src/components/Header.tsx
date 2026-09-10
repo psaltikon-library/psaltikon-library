@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Page } from "../types";
 import AuthModal from "./AuthModal";
+import OrthodoxCross from "./OrthodoxCross";
 
 interface HeaderProps {
   currentPage: Page;
@@ -135,7 +136,7 @@ const Header = ({ currentPage, onNavigate, isScrolled, onOpenSuggestion }: Heade
                 whileHover={{ rotate: [0, -5, 5, 0] }}
                 transition={{ duration: 0.5 }}
               >
-                ☦
+                <OrthodoxCross size={26} />
               </motion.div>
               <div>
                 <div className="logo-text">Psaltikon</div>

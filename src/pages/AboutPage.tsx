@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Easing } from 'framer-motion';
+import ContactModal from '../components/ContactModal';
 
 const easeOut: Easing = [0.16, 1, 0.3, 1];
 
 
 const AboutPage = () => {
+  const [contactOpen, setContactOpen] = useState(false);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -250,13 +254,14 @@ const AboutPage = () => {
             className="btn btn-primary"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => alert('Contact form coming soon!')}
+            onClick={() => setContactOpen(true)}
           >
             Contact Us
-            <span className="coming-soon-badge">Soon</span>
           </motion.button>
         </motion.div>
       </motion.section>
+
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   );
 };

@@ -53,9 +53,14 @@ const getRouteState = (): { page: Page; chantId: string | null } => {
 // Loading screen component
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
   useEffect(() => {
+    // Run once on mount. onComplete only calls the stable setIsLoading, so we
+    // intentionally omit it from deps — otherwise a new onComplete identity on
+    // every App re-render (e.g. from the scroll listener) resets the timer and
+    // the splash can hang.
     const timer = setTimeout(onComplete, 2000);
     return () => clearTimeout(timer);
-  }, [onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <motion.div 
@@ -297,7 +302,8 @@ function App() {
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <>
+      <AnimatePresence mode="wait">
       {isLoading ? (
         <LoadingScreen key="loading" onComplete={() => setIsLoading(false)} />
       ) : (
@@ -331,7 +337,11 @@ function App() {
           <Footer onNavigate={navigateTo} />
         </motion.div>
       )}
+      </AnimatePresence>
 
+      {/* Rendered outside the mode="wait" AnimatePresence — as a sibling it was a
+          second child, which breaks wait-mode and could strand the splash. It
+          manages its own enter/exit internally. */}
       <SuggestionModal
         open={suggestionOpen}
         onClose={() => setSuggestionOpen(false)}
@@ -339,7 +349,7 @@ function App() {
           setSuggestionOpen(false);
         }}
       />
-    </AnimatePresence>
+    </>
   );
 }
 
