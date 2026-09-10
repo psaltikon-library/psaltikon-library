@@ -3,6 +3,8 @@ import OrthodoxCross from '../components/OrthodoxCross';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Page, Chant } from '../types';
 import ChantCard from '../components/ChantCard';
+import BookletBuilderModal from '../components/BookletBuilderModal';
+import AuthModal from '../components/AuthModal';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { excludePrivateChants } from '../utils/chantVisibility';
@@ -106,6 +108,31 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
   const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
+  // Booklet selection: chant ids in the order they were picked — mirrors the
+  // Library so the featured cards build a booklet the same way.
+  const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
+  const [bookletModalOpen, setBookletModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  const toggleBookletChant = (chantId: string) => {
+    setBookletChantIds((current) =>
+      current.includes(chantId)
+        ? current.filter((id) => id !== chantId)
+        : [...current, chantId]
+    );
+  };
+
+  const handleSavedChantId = (chantId: string) => {
+    setSavedChantIds((current) =>
+      current.includes(chantId) ? current : [...current, chantId]
+    );
+  };
+
+  const handleUnsavedChantId = (chantId: string) => {
+    setSavedChantIds((current) => current.filter((id) => id !== chantId));
+  };
+
   const features = [
     {
       icon: icons.scroll,
@@ -197,6 +224,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   }, []);
 
   return (
+    <>
     <MotionConfig reducedMotion="user">
       {/* ── Hero ── */}
       <section className="hero" ref={heroRef}>
@@ -358,8 +386,12 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
                   chant={chant}
                   onView={onViewChant}
                   isSaved={savedChantIds.includes(chant.id)}
+                  onSave={handleSavedChantId}
+                  onUnsave={handleUnsavedChantId}
                   showSaveButton={true}
                   index={index}
+                  onToggleBooklet={toggleBookletChant}
+                  isInBooklet={bookletChantIds.includes(chant.id)}
                 />
               ))}
             </div>
@@ -368,6 +400,34 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
               <div className="empty-state-icon">{icons.music}</div>
               <p className="empty-state-text">No chants available yet.</p>
             </div>
+          )}
+
+          {bookletChantIds.length > 0 && (
+            <motion.div
+              className="home-booklet-bar"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: EASE_OUT }}
+            >
+              <span className="home-booklet-bar-label">
+                📚 {bookletChantIds.length}{' '}
+                {bookletChantIds.length === 1 ? 'chant' : 'chants'} selected for your booklet
+              </span>
+              <div className="home-booklet-bar-actions">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setBookletChantIds([])}
+                >
+                  Clear
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setBookletModalOpen(true)}
+                >
+                  Open Booklet Builder
+                </button>
+              </div>
+            </motion.div>
           )}
 
           <div className="section-cta">
@@ -453,6 +513,33 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         </div>
       </section>
     </MotionConfig>
+
+      <BookletBuilderModal
+        open={bookletModalOpen}
+        onClose={() => setBookletModalOpen(false)}
+        selectedChants={bookletChantIds
+          .map((id) => featuredChants.find((chant) => chant.id === id))
+          .filter((chant): chant is Chant => !!chant)}
+        onRemoveChant={(id) =>
+          setBookletChantIds((current) => current.filter((chantId) => chantId !== id))
+        }
+        onClearSelection={() => setBookletChantIds([])}
+        onNavigate={onNavigate}
+        onRequestLogin={() => {
+          setAuthMode('login');
+          setAuthModalOpen(true);
+        }}
+      />
+
+      {/* Rendered after the builder so it stacks above it; the builder picks up
+          the new session itself via onAuthStateChange. */}
+      <AuthModal
+        open={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSwitchMode={setAuthMode}
+      />
+    </>
   );
 };
 

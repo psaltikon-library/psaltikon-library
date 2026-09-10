@@ -1236,6 +1236,31 @@ a:hover {
   margin-top: var(--space-3xl);
 }
 
+/* ── Booklet builder bar (featured chants) ── */
+.home-booklet-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: var(--space-2xl);
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(139, 38, 53, 0.05), rgba(201, 162, 39, 0.05));
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.home-booklet-bar-label {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.home-booklet-bar-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
 /* ── Nested "island" button icon ── */
 .btn-nested {
   padding-right: var(--space-md);
