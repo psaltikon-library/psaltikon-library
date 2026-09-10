@@ -1236,29 +1236,101 @@ a:hover {
   margin-top: var(--space-3xl);
 }
 
-/* ── Booklet builder bar (featured chants) ── */
-.home-booklet-bar {
+/* ── Floating booklet builder bubble ── */
+.booklet-bubble {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  max-width: calc(100vw - 2rem);
+}
+
+.booklet-bubble--card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-md);
-  margin-top: var(--space-2xl);
-  padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, rgba(139, 38, 53, 0.05), rgba(201, 162, 39, 0.05));
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+  padding: 0.6rem 0.6rem 0.6rem 1.25rem;
+  background: rgba(253, 252, 250, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
 }
 
-.home-booklet-bar-label {
+.booklet-bubble-label {
   font-family: var(--font-ui);
   font-size: 0.9rem;
+  font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
-.home-booklet-bar-actions {
+.booklet-bubble-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-sm);
+}
+
+.booklet-bubble-min {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.booklet-bubble-min:hover {
+  color: var(--burgundy);
+  border-color: var(--burgundy);
+}
+
+/* Minimized state — a compact pill the reader can click to reopen. */
+.booklet-bubble--pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+
+.booklet-bubble-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  color: var(--burgundy-dark);
+  background: var(--gold-light);
+  border-radius: 999px;
+}
+
+@media (max-width: 520px) {
+  .booklet-bubble--card {
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    justify-content: center;
+  }
 }
 
 /* ── Nested "island" button icon ── */

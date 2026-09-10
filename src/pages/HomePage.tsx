@@ -1,4 +1,4 @@
-import { motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
+import { AnimatePresence, motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
 import OrthodoxCross from '../components/OrthodoxCross';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Page, Chant } from '../types';
@@ -111,6 +111,7 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
   // Booklet selection: chant ids in the order they were picked — mirrors the
   // Library so the featured cards build a booklet the same way.
   const [bookletChantIds, setBookletChantIds] = useState<string[]>([]);
+  const [bookletBarMinimized, setBookletBarMinimized] = useState(false);
   const [bookletModalOpen, setBookletModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -122,6 +123,14 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         : [...current, chantId]
     );
   };
+
+  // Once the selection is empty the bubble is gone, so expand it again for the
+  // next time the reader starts a booklet.
+  useEffect(() => {
+    if (bookletChantIds.length === 0 && bookletBarMinimized) {
+      setBookletBarMinimized(false);
+    }
+  }, [bookletChantIds.length, bookletBarMinimized]);
 
   const handleSavedChantId = (chantId: string) => {
     setSavedChantIds((current) =>
@@ -402,34 +411,6 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
             </div>
           )}
 
-          {bookletChantIds.length > 0 && (
-            <motion.div
-              className="home-booklet-bar"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: EASE_OUT }}
-            >
-              <span className="home-booklet-bar-label">
-                📚 {bookletChantIds.length}{' '}
-                {bookletChantIds.length === 1 ? 'chant' : 'chants'} selected for your booklet
-              </span>
-              <div className="home-booklet-bar-actions">
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setBookletChantIds([])}
-                >
-                  Clear
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setBookletModalOpen(true)}
-                >
-                  Open Booklet Builder
-                </button>
-              </div>
-            </motion.div>
-          )}
-
           <div className="section-cta">
             <button className="btn btn-primary btn-lg btn-nested" onClick={() => onNavigate('library')}>
               View All Chants
@@ -513,6 +494,69 @@ const HomePage = ({ onNavigate, onViewChant }: HomePageProps) => {
         </div>
       </section>
     </MotionConfig>
+
+      {/* Floating booklet-builder bubble, pinned near the top of the page.
+          The reader can minimize it to a small pill if it's in the way. */}
+      <AnimatePresence>
+        {bookletChantIds.length > 0 && (
+          bookletBarMinimized ? (
+            <motion.button
+              key="booklet-bubble-pill"
+              type="button"
+              className="booklet-bubble booklet-bubble--pill"
+              onClick={() => setBookletBarMinimized(false)}
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label={`Show booklet builder — ${bookletChantIds.length} selected`}
+            >
+              <span aria-hidden="true">📚</span>
+              <span className="booklet-bubble-count">{bookletChantIds.length}</span>
+            </motion.button>
+          ) : (
+            <motion.div
+              key="booklet-bubble-card"
+              className="booklet-bubble booklet-bubble--card"
+              initial={{ opacity: 0, y: -16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              role="region"
+              aria-label="Booklet builder"
+            >
+              <span className="booklet-bubble-label">
+                <span aria-hidden="true">📚</span> {bookletChantIds.length}{' '}
+                {bookletChantIds.length === 1 ? 'chant' : 'chants'} selected
+              </span>
+              <div className="booklet-bubble-actions">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setBookletChantIds([])}
+                >
+                  Clear
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setBookletModalOpen(true)}
+                >
+                  Open Builder
+                </button>
+                <button
+                  type="button"
+                  className="booklet-bubble-min"
+                  onClick={() => setBookletBarMinimized(true)}
+                  aria-label="Minimize booklet builder"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
+          )
+        )}
+      </AnimatePresence>
 
       <BookletBuilderModal
         open={bookletModalOpen}
