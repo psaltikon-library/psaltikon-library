@@ -1240,8 +1240,7 @@ a:hover {
 .booklet-bubble {
   position: fixed;
   top: 96px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 1rem;
   z-index: 900;
   max-width: calc(100vw - 2rem);
 }
@@ -1299,14 +1298,11 @@ a:hover {
   border-color: var(--burgundy);
 }
 
-/* Narrow screens only adjust position — the card design above is unchanged. */
+/* Narrow screens only nudge the position — the card design above is unchanged. */
 @media (max-width: 520px) {
   .booklet-bubble {
     top: 84px;
-    left: 0.75rem;
     right: 0.75rem;
-    transform: none;
-    max-width: none;
   }
 }
 
