@@ -1246,17 +1246,20 @@ a:hover {
   max-width: calc(100vw - 2rem);
 }
 
+/* One uniform card layout at every screen size: a centered label stacked above
+   a centered button row, gentle corners, and even padding — so the content is
+   always inset from the edges and never clips against a rounded corner. */
 .booklet-bubble--card {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-md);
-  padding: 0.6rem 0.6rem 0.6rem 1.25rem;
-  background: rgba(253, 252, 250, 0.9);
+  gap: 0.7rem;
+  padding: 0.9rem 1.25rem;
+  background: rgba(253, 252, 250, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 14px;
   box-shadow: var(--shadow-lg);
 }
 
@@ -1265,12 +1268,14 @@ a:hover {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-primary);
-  white-space: nowrap;
+  text-align: center;
 }
 
 .booklet-bubble-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: var(--space-sm);
 }
 
@@ -1294,34 +1299,14 @@ a:hover {
   border-color: var(--burgundy);
 }
 
+/* Narrow screens only adjust position — the card design above is unchanged. */
 @media (max-width: 520px) {
   .booklet-bubble {
     top: 84px;
-  }
-
-  /* On narrow screens the content wraps, so drop the full-pill radius (its
-     corners would clip the text/buttons), inset the padding evenly, and stack
-     the label above a centered button row. */
-  .booklet-bubble--card {
     left: 0.75rem;
     right: 0.75rem;
     transform: none;
-    justify-content: center;
-    align-items: center;
-    row-gap: 0.7rem;
-    padding: 0.9rem 1.1rem;
-    border-radius: 20px;
-  }
-
-  .booklet-bubble-label {
-    width: 100%;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .booklet-bubble-actions {
-    width: 100%;
-    justify-content: center;
+    max-width: none;
   }
 }
 
