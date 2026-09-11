@@ -1295,10 +1295,32 @@ a:hover {
 }
 
 @media (max-width: 520px) {
+  .booklet-bubble {
+    top: 84px;
+  }
+
+  /* On narrow screens the content wraps, so drop the full-pill radius (its
+     corners would clip the text/buttons), inset the padding evenly, and stack
+     the label above a centered button row. */
   .booklet-bubble--card {
-    left: 1rem;
-    right: 1rem;
+    left: 0.75rem;
+    right: 0.75rem;
     transform: none;
+    justify-content: center;
+    align-items: center;
+    row-gap: 0.7rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 20px;
+  }
+
+  .booklet-bubble-label {
+    width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .booklet-bubble-actions {
+    width: 100%;
     justify-content: center;
   }
 }
@@ -1310,6 +1332,9 @@ a:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* Pins the icon to the right, next to the hamburger, once the nav links are
+     hidden on small screens (with the nav visible it has no effect). */
+  margin-left: auto;
   width: 44px;
   height: 44px;
   background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
