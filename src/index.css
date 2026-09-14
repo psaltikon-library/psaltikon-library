@@ -3199,6 +3199,30 @@ a:hover {
   flex-direction: column;
 }
 
+.upload-chant-form__pdf-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.upload-chant-form__section-label {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.upload-chant-form__section-hint {
+  margin: -6px 0 2px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .upload-dropzone {
   position: relative;
   min-height: 320px;

@@ -25,6 +25,10 @@ export interface Chant {
   menaion_day?: number | null;
   /** Triodion / Pentecostarion ordering. */
   week_theme?: string | null;
+  /** Optional overrides for the PDF header/footer stamp (utils/pdfStamp). */
+  pdf_header?: string | null;
+  pdf_credit?: string | null;
+  pdf_phonetics?: string | null;
 }
 
 export interface Booklet {

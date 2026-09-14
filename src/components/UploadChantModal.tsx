@@ -16,6 +16,7 @@ import {
   updateChantPdfLabels,
 } from "../utils/chantPdfs";
 import { loadComposers } from "../utils/composers";
+import { headerLine, composerCredit } from "../utils/pdfStamp";
 import { CHURCH_BOOKS, MENAION_MONTHS, SECTIONS_BY_BOOK } from "../utils/churchBooks";
 
 // Ensure a select can still display a stored value that is no longer an option.
@@ -47,6 +48,10 @@ export default function UploadChantModal({
   const [menaionMonth, setMenaionMonth] = useState("");
   const [menaionDay, setMenaionDay] = useState("");
   const [weekTheme, setWeekTheme] = useState("");
+  // Optional overrides for the PDF header/footer stamp (utils/pdfStamp).
+  const [pdfHeader, setPdfHeader] = useState("");
+  const [pdfCredit, setPdfCredit] = useState("");
+  const [pdfPhonetics, setPdfPhonetics] = useState("");
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [existingPdfs, setExistingPdfs] = useState<ChantPdfRow[]>([]);
   const [removedPdfIds, setRemovedPdfIds] = useState<string[]>([]);
@@ -81,6 +86,9 @@ export default function UploadChantModal({
     setMenaionMonth(initialChant?.menaion_month || "");
     setMenaionDay(initialChant?.menaion_day != null ? String(initialChant.menaion_day) : "");
     setWeekTheme(initialChant?.week_theme || "");
+    setPdfHeader(initialChant?.pdf_header || "");
+    setPdfCredit(initialChant?.pdf_credit || "");
+    setPdfPhonetics(initialChant?.pdf_phonetics || "");
     setPdfFiles([]);
     setExistingPdfs([]);
     setRemovedPdfIds([]);
@@ -333,6 +341,9 @@ export default function UploadChantModal({
       menaion_month: book === "Menaion" ? menaionMonth || null : null,
       menaion_day: book === "Menaion" && menaionDay ? Number(menaionDay) : null,
       week_theme: SECTIONS_BY_BOOK[book] ? weekTheme.trim() || null : null,
+      pdf_header: pdfHeader.trim() || null,
+      pdf_credit: pdfCredit.trim() || null,
+      pdf_phonetics: pdfPhonetics.trim() || null,
       pdf_path: primaryPdfPath,
       uploaded_by: initialChant?.uploaded_by || user.id,
       status: initialChant?.status || "pending",
@@ -692,6 +703,55 @@ export default function UploadChantModal({
                       </div>
                     </>
                   )}
+
+                  <div className="upload-chant-form__pdf-meta upload-chant-form__field--full">
+                  <p className="upload-chant-form__section-label">
+                    PDF header &amp; footer
+                  </p>
+                  <p className="upload-chant-form__section-hint">
+                    Leave blank to use the automatic text. Fill these in only to
+                    override the finnicky cases.
+                  </p>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Header</label>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder={
+                        headerLine({ book, service, title } as any) ||
+                        "Book/Service - Title"
+                      }
+                      value={pdfHeader}
+                      onChange={(e) => setPdfHeader(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Footer credit</label>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder={
+                        composerCredit({ composer } as any) ||
+                        "Text taken from …"
+                      }
+                      value={pdfCredit}
+                      onChange={(e) => setPdfCredit(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="auth-field upload-chant-form__field--full">
+                    <label className="auth-label">Footer phonetics line</label>
+                    <input
+                      className="auth-input"
+                      type="text"
+                      placeholder="e.g. Phonetics provided by Gabriel Zohrob and adapted by Kevin El-Saikali"
+                      value={pdfPhonetics}
+                      onChange={(e) => setPdfPhonetics(e.target.value)}
+                    />
+                  </div>
+                  </div>
                 </div>
 
                 <div className="upload-chant-form__upload-field">

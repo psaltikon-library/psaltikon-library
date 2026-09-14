@@ -22,15 +22,25 @@ function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: nu
   return `${out.trimEnd()}…`;
 }
 
-/** Top-of-page line: "Book/Service - Title" (e.g. "Psalter - Psalm 83"). */
+/**
+ * Top-of-page line. Uses the chant's `pdf_header` override when set, otherwise
+ * derives "Book/Service - Title" (e.g. "Psalter - Psalm 83").
+ */
 export function headerLine(chant: Chant): string {
+  const override = (chant.pdf_header || '').trim();
+  if (override) return winAnsiSafe(override);
   const book = (chant.book || chant.service || '').trim();
   const title = (chant.title || '').trim();
   return winAnsiSafe(book && title ? `${book} - ${title}` : title || book);
 }
 
-/** Credit line naming the source. Subdeacon George chants credit the Archdiocese. */
+/**
+ * Footer credit naming the source. Uses the chant's `pdf_credit` override when
+ * set; otherwise credits the composer (Subdeacon George → the Archdiocese).
+ */
 export function composerCredit(chant: Chant): string {
+  const override = (chant.pdf_credit || '').trim();
+  if (override) return winAnsiSafe(override);
   const composer = (chant.composer || '').trim();
   if (/subdeacon\s+george/i.test(composer)) {
     return 'Text taken from the Antiochian Archdiocese of North America.';
@@ -56,12 +66,21 @@ export async function stampHeaderFooter(
   const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
 
   const header = headerLine(chant);
-  const credit = composerCredit(chant);
   const copyright = `© ${new Date().getFullYear()} The Orthodox Heritage · ${CONTACT_EMAIL}`;
+
+  // Footer lines, top to bottom: source credit, optional phonetics credit, then
+  // the copyright line. Blank ones are dropped so the block collapses cleanly.
+  const footerLines = [
+    { text: composerCredit(chant), font: italic },
+    { text: winAnsiSafe(chant.pdf_phonetics || ''), font: italic },
+    { text: copyright, font },
+  ].filter((line) => line.text);
 
   const MARGIN = 34;
   const HEADER_SIZE = 9;
   const FOOT_SIZE = 7.5;
+  const FOOT_GAP = 11; // baseline-to-baseline spacing
+  const FOOT_BOTTOM = 14; // baseline of the lowest line
 
   const drawCentered = (
     page: PDFPage,
@@ -94,22 +113,21 @@ export async function stampHeaderFooter(
       });
     }
 
-    // Footer — gold rule above the credit and copyright lines.
-    const ruleY = 40;
+    // Footer — a gold rule above the stacked credit/phonetics/copyright lines.
+    const n = footerLines.length;
+    const topBaseline = FOOT_BOTTOM + (n - 1) * FOOT_GAP;
     page.drawRectangle({
       x: MARGIN,
-      y: ruleY,
+      y: topBaseline + 8,
       width: width - MARGIN * 2,
       height: 0.6,
       color: GOLD,
       opacity: 0.7,
     });
-    if (credit) {
-      drawCentered(page, credit, ruleY - 13, italic, FOOT_SIZE, MUTED);
-      drawCentered(page, copyright, ruleY - 24, font, FOOT_SIZE, MUTED);
-    } else {
-      drawCentered(page, copyright, ruleY - 13, font, FOOT_SIZE, MUTED);
-    }
+    footerLines.forEach((line, i) => {
+      const y = FOOT_BOTTOM + (n - 1 - i) * FOOT_GAP;
+      drawCentered(page, line.text, y, line.font, FOOT_SIZE, MUTED);
+    });
   }
 
   return doc.save();
