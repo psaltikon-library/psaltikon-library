@@ -10,7 +10,6 @@ import {
 } from 'pdf-lib';
 import { Chant } from '../types';
 
-const GOLD = rgb(0.788, 0.635, 0.153); // #C9A227
 const INK = rgb(0.176, 0.165, 0.149); // #2D2A26
 const MUTED = rgb(0.42, 0.4, 0.36);
 const BURGUNDY = rgb(0.545, 0.149, 0.208); // #8B2635
@@ -184,7 +183,7 @@ export async function stampHeaderFooter(
         y: height - 31,
         width: width - MARGIN * 2,
         height: 0.6,
-        color: GOLD,
+        color: BURGUNDY,
         opacity: 0.7,
       });
     }
@@ -197,7 +196,7 @@ export async function stampHeaderFooter(
       y: topBaseline + 8,
       width: width - MARGIN * 2,
       height: 0.6,
-      color: GOLD,
+      color: BURGUNDY,
       opacity: 0.7,
     });
     optionalLines.forEach((line, i) => {
