@@ -6,6 +6,8 @@ const INK = rgb(0.176, 0.165, 0.149); // #2D2A26
 const MUTED = rgb(0.42, 0.4, 0.36);
 
 const CONTACT_EMAIL = 'theorthodoxheritage@outlook.com';
+const DEFAULT_PHONETICS =
+  'Phonetics provided by Gabriel Zohrob and adapted by Kevin El-Saikali';
 
 // pdf-lib's standard fonts are WinAnsi-only, so drop anything they can't encode
 // (stray Greek/accented glyphs) before drawing — headers/footers are English.
@@ -52,6 +54,19 @@ export function composerCredit(chant: Chant): string {
 }
 
 /**
+ * Optional phonetics-credit footer line. Uses the chant's `pdf_phonetics`
+ * override when set; otherwise auto-fills the standard credit for Arabic and
+ * Greek chants only, and stays empty for every other language.
+ */
+export function phoneticsCredit(chant: Chant): string {
+  const override = (chant.pdf_phonetics || '').trim();
+  if (override) return winAnsiSafe(override);
+  const language = (chant.language || '').toLowerCase();
+  if (/arab|greek/.test(language)) return DEFAULT_PHONETICS;
+  return '';
+}
+
+/**
  * Draw a header (book/service + title) and footer (source credit + Orthodox
  * Heritage copyright and contact email) onto every page of a chant PDF, and
  * return the new bytes. Written once here; applies to any chant's PDF.
@@ -72,7 +87,7 @@ export async function stampHeaderFooter(
   // the copyright line. Blank ones are dropped so the block collapses cleanly.
   const footerLines = [
     { text: composerCredit(chant), font: italic },
-    { text: winAnsiSafe(chant.pdf_phonetics || ''), font: italic },
+    { text: phoneticsCredit(chant), font: italic },
     { text: copyright, font },
   ].filter((line) => line.text);
 

@@ -16,7 +16,7 @@ import {
   updateChantPdfLabels,
 } from "../utils/chantPdfs";
 import { loadComposers } from "../utils/composers";
-import { headerLine, composerCredit } from "../utils/pdfStamp";
+import { headerLine, composerCredit, phoneticsCredit } from "../utils/pdfStamp";
 import { CHURCH_BOOKS, MENAION_MONTHS, SECTIONS_BY_BOOK } from "../utils/churchBooks";
 
 // Ensure a select can still display a stored value that is no longer an option.
@@ -746,7 +746,10 @@ export default function UploadChantModal({
                     <input
                       className="auth-input"
                       type="text"
-                      placeholder="e.g. Phonetics provided by Gabriel Zohrob and adapted by Kevin El-Saikali"
+                      placeholder={
+                        phoneticsCredit({ language } as any) ||
+                        "Auto-filled on Arabic & Greek chants; leave blank otherwise"
+                      }
                       value={pdfPhonetics}
                       onChange={(e) => setPdfPhonetics(e.target.value)}
                     />
