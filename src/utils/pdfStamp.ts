@@ -1,9 +1,19 @@
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage, Color } from 'pdf-lib';
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  PDFFont,
+  PDFPage,
+  PDFName,
+  PDFString,
+  Color,
+} from 'pdf-lib';
 import { Chant } from '../types';
 
 const GOLD = rgb(0.788, 0.635, 0.153); // #C9A227
 const INK = rgb(0.176, 0.165, 0.149); // #2D2A26
 const MUTED = rgb(0.42, 0.4, 0.36);
+const BURGUNDY = rgb(0.545, 0.149, 0.208); // #8B2635
 
 const CONTACT_EMAIL = 'theorthodoxheritage@outlook.com';
 const DEFAULT_PHONETICS =
@@ -22,6 +32,34 @@ function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: nu
     out = out.slice(0, -1);
   }
   return `${out.trimEnd()}…`;
+}
+
+/** Overlay a clickable link annotation on a page region (PDF user space). */
+function addLinkAnnotation(
+  doc: PDFDocument,
+  page: PDFPage,
+  rect: [number, number, number, number],
+  uri: string
+) {
+  const link = doc.context.register(
+    doc.context.obj({
+      Type: 'Annot',
+      Subtype: 'Link',
+      Rect: rect,
+      Border: [0, 0, 0],
+      A: {
+        Type: 'Action',
+        S: 'URI',
+        URI: PDFString.of(uri),
+      },
+    })
+  );
+  const annots = page.node.Annots();
+  if (annots) {
+    annots.push(link);
+  } else {
+    page.node.set(PDFName.of('Annots'), doc.context.obj([link]));
+  }
 }
 
 /**
@@ -81,14 +119,12 @@ export async function stampHeaderFooter(
   const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
 
   const header = headerLine(chant);
-  const copyright = `© ${new Date().getFullYear()} The Orthodox Heritage · ${CONTACT_EMAIL}`;
+  const copyrightPrefix = `© ${new Date().getFullYear()} The Orthodox Heritage · `;
 
-  // Footer lines, top to bottom: source credit, optional phonetics credit, then
-  // the copyright line. Blank ones are dropped so the block collapses cleanly.
-  const footerLines = [
+  // Optional footer lines stacked above the always-present copyright line.
+  const optionalLines = [
     { text: composerCredit(chant), font: italic },
     { text: phoneticsCredit(chant), font: italic },
-    { text: copyright, font },
   ].filter((line) => line.text);
 
   const MARGIN = 34;
@@ -112,6 +148,31 @@ export async function stampHeaderFooter(
     page.drawText(line, { x: (page.getWidth() - w) / 2, y, size, font: f, color });
   };
 
+  // Copyright line, centered, with the email drawn in burgundy + underlined and
+  // wrapped in a clickable mailto link.
+  const drawCopyright = (page: PDFPage, y: number) => {
+    const prefixW = font.widthOfTextAtSize(copyrightPrefix, FOOT_SIZE);
+    const emailW = font.widthOfTextAtSize(CONTACT_EMAIL, FOOT_SIZE);
+    const startX = (page.getWidth() - (prefixW + emailW)) / 2;
+    const emailX = startX + prefixW;
+
+    page.drawText(copyrightPrefix, { x: startX, y, size: FOOT_SIZE, font, color: MUTED });
+    page.drawText(CONTACT_EMAIL, { x: emailX, y, size: FOOT_SIZE, font, color: BURGUNDY });
+    page.drawLine({
+      start: { x: emailX, y: y - 1.5 },
+      end: { x: emailX + emailW, y: y - 1.5 },
+      thickness: 0.5,
+      color: BURGUNDY,
+      opacity: 0.8,
+    });
+    addLinkAnnotation(
+      doc,
+      page,
+      [emailX, y - 2, emailX + emailW, y + FOOT_SIZE],
+      `mailto:${CONTACT_EMAIL}`
+    );
+  };
+
   for (const page of doc.getPages()) {
     const { width, height } = page.getSize();
 
@@ -129,7 +190,7 @@ export async function stampHeaderFooter(
     }
 
     // Footer — a gold rule above the stacked credit/phonetics/copyright lines.
-    const n = footerLines.length;
+    const n = optionalLines.length + 1; // + the copyright line
     const topBaseline = FOOT_BOTTOM + (n - 1) * FOOT_GAP;
     page.drawRectangle({
       x: MARGIN,
@@ -139,10 +200,11 @@ export async function stampHeaderFooter(
       color: GOLD,
       opacity: 0.7,
     });
-    footerLines.forEach((line, i) => {
+    optionalLines.forEach((line, i) => {
       const y = FOOT_BOTTOM + (n - 1 - i) * FOOT_GAP;
       drawCentered(page, line.text, y, line.font, FOOT_SIZE, MUTED);
     });
+    drawCopyright(page, FOOT_BOTTOM);
   }
 
   return doc.save();
