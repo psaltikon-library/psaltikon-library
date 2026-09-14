@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Chant } from '../types';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
@@ -9,6 +9,8 @@ import { isChantPublic, isAdminViewer } from '../utils/chantVisibility';
 import { recordChantView } from '../utils/analytics';
 import UploadChantModal from '../components/UploadChantModal';
 import { ChantPdfRow, loadChantPdfs } from '../utils/chantPdfs';
+import { stampHeaderFooter } from '../utils/pdfStamp';
+import { downloadBytes } from '../utils/pdfBooklet';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -235,7 +237,7 @@ const PdfDocumentRenderer = forwardRef(function PdfDocumentRenderer(
     onError,
     onVisiblePageChange,
   }: {
-    file: string | File;
+    file: string | File | { data: Uint8Array };
     fileKey: string;
     scale: number;
     onLoaded: (numPages: number) => void;
@@ -604,6 +606,54 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
 
   const hasPdf = !!pdfSource;
 
+  // Stamp a header (book/service + title) and footer (source credit + Orthodox
+  // Heritage copyright/contact) onto the active PDF, then show and download that
+  // stamped copy. Falls back to the raw URL if fetching/stamping fails.
+  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
+  const [pdfStampFailed, setPdfStampFailed] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    setPdfData(null);
+    setPdfStampFailed(false);
+
+    if (!pdfSource || !chant) return;
+
+    (async () => {
+      try {
+        const res = await fetch(pdfSource);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const stamped = await stampHeaderFooter(buf, chant);
+        if (isActive) setPdfData(stamped);
+      } catch {
+        // Couldn't fetch/stamp (e.g. blocked request) — show the original PDF.
+        if (isActive) setPdfStampFailed(true);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pdfSource, chant]);
+
+  // Hand react-pdf a fresh copy so it can transfer the buffer to its worker
+  // without neutering the bytes we keep for the download button.
+  const documentFile = useMemo<string | { data: Uint8Array } | null>(() => {
+    if (pdfData) return { data: pdfData.slice() };
+    if (pdfStampFailed && pdfSource) return pdfSource;
+    return null;
+  }, [pdfData, pdfStampFailed, pdfSource]);
+
+  const downloadActivePdf = async () => {
+    const name = `${chantTitle}.pdf`;
+    if (pdfData) {
+      downloadBytes(pdfData, name);
+      return;
+    }
+    await downloadPdf(pdfSource, name);
+  };
+
   // PDF viewer state (so toolbar can live in the viewer header)
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfPage, setPdfPage] = useState<number>(1);
@@ -641,7 +691,7 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
     try {
       setPdfDownloading(true);
       setPdfError(null);
-      await downloadPdf(pdfSource, `${chantTitle}.pdf`);
+      await downloadActivePdf();
     } catch (e: any) {
       setPdfError(e?.message ?? 'Failed to download PDF');
     } finally {
@@ -667,7 +717,7 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
     try {
       setPdfDownloading(true);
       setPdfError(null);
-      await downloadPdf(pdfSource, `${chantTitle}.pdf`);
+      await downloadActivePdf();
     } catch (e: any) {
       alert(e?.message ?? 'Failed to download PDF');
       setPdfError(e?.message ?? 'Failed to download PDF');
@@ -938,9 +988,10 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
           {hasPdf ? (
             <>
               <PdfErrorBanner error={pdfError} />
+              {documentFile ? (
               <PdfDocumentRenderer
                 ref={pdfRendererRef}
-                file={pdfSource}
+                file={documentFile}
                 fileKey={pdfFileKey}
                 scale={pdfScale}
                 onLoaded={handlePdfLoaded}
@@ -950,6 +1001,9 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
                   setPdfPage(p);
                 }}
               />
+              ) : (
+                <div style={{ padding: 16, color: 'var(--text-muted)' }}>Loading PDF…</div>
+              )}
             </>
           ) : (
             <div
