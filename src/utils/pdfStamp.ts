@@ -10,7 +10,6 @@ import {
 } from 'pdf-lib';
 import { Chant } from '../types';
 
-const INK = rgb(0.176, 0.165, 0.149); // #2D2A26
 const MUTED = rgb(0.42, 0.4, 0.36);
 const BURGUNDY = rgb(0.545, 0.149, 0.208); // #8B2635
 
@@ -63,14 +62,16 @@ function addLinkAnnotation(
 
 /**
  * Top-of-page line. Uses the chant's `pdf_header` override when set, otherwise
- * derives "Book/Service - Title" (e.g. "Psalter - Psalm 83").
+ * derives "Service/book - Feast - Chant type" (e.g. "Psalter - Nativity -
+ * Communion Hymn"), dropping the feast when the chant has none.
  */
 export function headerLine(chant: Chant): string {
   const override = (chant.pdf_header || '').trim();
   if (override) return winAnsiSafe(override);
-  const book = (chant.book || chant.service || '').trim();
-  const title = (chant.title || '').trim();
-  return winAnsiSafe(book && title ? `${book} - ${title}` : title || book);
+  const primary = (chant.book || chant.service || '').trim();
+  const feast = (chant.feast || '').trim();
+  const part = (chant.part || '').trim();
+  return winAnsiSafe([primary, feast, part].filter(Boolean).join(' - '));
 }
 
 /**
@@ -177,7 +178,7 @@ export async function stampHeaderFooter(
 
     // Header — title line with a thin gold rule beneath it.
     if (header) {
-      drawCentered(page, header, height - 24, bold, HEADER_SIZE, INK);
+      drawCentered(page, header, height - 24, bold, HEADER_SIZE, BURGUNDY);
       page.drawRectangle({
         x: MARGIN,
         y: height - 31,
