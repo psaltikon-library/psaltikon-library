@@ -18,3 +18,4 @@ dist-ssr/
 
 # Claude Code local session/tooling config
 .claude/settings.local.json
+HANDOFF.md
