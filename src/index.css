@@ -3063,7 +3063,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: visible;
+  overflow-y: auto;
   min-height: 0;
 }
 
