@@ -645,6 +645,22 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
     return null;
   }, [pdfData, pdfStampFailed, pdfSource]);
 
+  // "Open" launches a new tab, which needs a URL rather than raw bytes — build
+  // one from the stamped copy so the header/footer still show there. Falls
+  // back to the original file's URL only if stamping failed.
+  const [pdfOpenUrl, setPdfOpenUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pdfData) {
+      setPdfOpenUrl(null);
+      return;
+    }
+    const blob = new Blob([pdfData.slice() as BlobPart], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    setPdfOpenUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pdfData]);
+
   const downloadActivePdf = async () => {
     const name = `${chantTitle}.pdf`;
     if (pdfData) {
@@ -959,7 +975,7 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
                 onZoomOut={() => setPdfScale((s) => Math.max(0.5, +(s - 0.1).toFixed(2)))}
                 onZoomIn={() => setPdfScale((s) => Math.min(2.5, +(s + 0.1).toFixed(2)))}
                 onDownload={handlePdfToolbarDownload}
-                openUrl={pdfSource}
+                openUrl={pdfOpenUrl || (pdfStampFailed ? pdfSource : undefined)}
                 variant="header"
               />
             </div>
