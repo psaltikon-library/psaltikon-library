@@ -62,16 +62,21 @@ function addLinkAnnotation(
 
 /**
  * Top-of-page line. Uses the chant's `pdf_header` override when set, otherwise
- * derives "Service/book - Feast - Chant type" (e.g. "Psalter - Nativity -
- * Communion Hymn"), dropping the feast when the chant has none.
+ * derives "Service/book - Psalm N - Feast - Chant type" (e.g. "Psalter -
+ * Psalm 50 - Communion Hymn"), dropping the psalm number for non-Psalter
+ * chants and the feast when the chant has none.
  */
 export function headerLine(chant: Chant): string {
   const override = (chant.pdf_header || '').trim();
   if (override) return winAnsiSafe(override);
   const primary = (chant.book || chant.service || '').trim();
+  const psalm =
+    chant.book === 'Psalter' && typeof chant.psalm_number === 'number' && !Number.isNaN(chant.psalm_number)
+      ? `Psalm ${chant.psalm_number}`
+      : '';
   const feast = (chant.feast || '').trim();
   const part = (chant.part || '').trim();
-  return winAnsiSafe([primary, feast, part].filter(Boolean).join(' - '));
+  return winAnsiSafe([primary, psalm, feast, part].filter(Boolean).join(' - '));
 }
 
 /**

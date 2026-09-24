@@ -719,8 +719,14 @@ export default function UploadChantModal({
                       className="auth-input"
                       type="text"
                       placeholder={
-                        headerLine({ book, service, title } as any) ||
-                        "Book/Service - Title"
+                        headerLine({
+                          book,
+                          service,
+                          feast,
+                          part,
+                          psalm_number:
+                            book === "Psalter" && psalmNumber ? Number(psalmNumber) : null,
+                        } as any) || "Book/Service - Title"
                       }
                       value={pdfHeader}
                       onChange={(e) => setPdfHeader(e.target.value)}
