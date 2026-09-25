@@ -75,7 +75,10 @@ export function headerLine(chant: Chant): string {
       ? `Psalm ${chant.psalm_number}`
       : '';
   const feast = (chant.feast || '').trim();
-  const part = (chant.part || '').trim();
+  // "Psalm" as the part is redundant once the psalm number is already shown
+  // (e.g. "Psalter - Psalm 117 - Psalm"), so drop it in that case only.
+  const rawPart = (chant.part || '').trim();
+  const part = psalm && /^psalm$/i.test(rawPart) ? '' : rawPart;
   return winAnsiSafe([primary, psalm, feast, part].filter(Boolean).join(' - '));
 }
 
