@@ -979,6 +979,14 @@ a:hover {
   font-size: 1.25rem;
 }
 
+.chant-card-neume {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  object-fit: contain;
+  margin: -8px -6px -8px 0;
+}
+
 .chant-card-title {
   font-family: var(--font-display);
   font-size: 1.15rem;

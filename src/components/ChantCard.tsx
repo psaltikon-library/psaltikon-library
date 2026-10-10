@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Chant } from '../types';
 import { supabase } from '../lib/supabase';
 import { saveChant, unsaveChant } from '../utils/savedChants';
+import { neumeForTone } from '../utils/toneNeumes';
 
 interface ChantCardProps {
   chant: Chant;
@@ -18,88 +19,6 @@ interface ChantCardProps {
   onToggleBooklet?: (id: string) => void;
   isInBooklet?: boolean;
 }
-
-const getMartyriaForTone = (tone?: string | null) => {
-  const normalized = (tone || '').trim().toLowerCase();
-
-  if (
-    normalized === 'tone 1' ||
-    normalized === 'echos 1' ||
-    normalized === 'mode 1' ||
-    normalized === 'first tone'
-  ) {
-    return '𝀈';
-  }
-
-  if (
-    normalized === 'tone 2' ||
-    normalized === 'echos 2' ||
-    normalized === 'mode 2' ||
-    normalized === 'second tone'
-  ) {
-    return '𝀉';
-  }
-
-  if (
-    normalized === 'tone 3' ||
-    normalized === 'echos 3' ||
-    normalized === 'mode 3' ||
-    normalized === 'third tone'
-  ) {
-    return '𝀊';
-  }
-
-  if (
-    normalized === 'tone 4' ||
-    normalized === 'echos 4' ||
-    normalized === 'mode 4' ||
-    normalized === 'fourth tone'
-  ) {
-    return '𝀋';
-  }
-
-  if (
-    normalized === 'tone 5' ||
-    normalized === 'plagal 1' ||
-    normalized === 'plagal of the first' ||
-    normalized === 'echos plagios 1' ||
-    normalized === 'mode 5'
-  ) {
-    return '𝀌';
-  }
-
-  if (
-    normalized === 'tone 6' ||
-    normalized === 'plagal 2' ||
-    normalized === 'plagal of the second' ||
-    normalized === 'echos plagios 2' ||
-    normalized === 'mode 6'
-  ) {
-    return '𝀍';
-  }
-
-  if (
-    normalized === 'tone 7' ||
-    normalized === 'grave tone' ||
-    normalized === 'varys' ||
-    normalized === 'echos varys' ||
-    normalized === 'mode 7'
-  ) {
-    return '𝀎';
-  }
-
-  if (
-    normalized === 'tone 8' ||
-    normalized === 'plagal 4' ||
-    normalized === 'plagal of the fourth' ||
-    normalized === 'echos plagios 4' ||
-    normalized === 'mode 8'
-  ) {
-    return '𝀏';
-  }
-
-  return '𝄞';
-};
 
 const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved = false, showSaveButton = true, index = 0, onToggleBooklet, isInBooklet = false }: ChantCardProps) => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -216,7 +135,7 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
     }
   };
 
-  const martyriaSymbol = getMartyriaForTone(chant.tone);
+  const neume = neumeForTone(chant.tone);
 
   return (
     <motion.div
@@ -248,20 +167,16 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
             <h3 className="chant-card-title">
               {chant.title}
             </h3>
-            <motion.div 
-              className="chant-card-icon"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ type: "spring", stiffness: 400 }}
-              title={chant.tone || 'Tone not set'}
-              style={{
-                fontSize: '1.35rem',
-                lineHeight: 1,
-                flexShrink: 0,
-                fontFamily: '"Segoe UI Symbol", "Noto Sans Symbols 2", "Noto Music", serif',
-              }}
-            >
-              {martyriaSymbol}
-            </motion.div>
+            {neume && (
+              <motion.img
+                className="chant-card-neume"
+                src={neume}
+                alt=""
+                title={chant.tone || undefined}
+                whileHover={{ scale: 1.1 }}
+                transition={{ type: 'spring', stiffness: 400 }}
+              />
+            )}
           </div>
           {isAdmin && (
             <div
