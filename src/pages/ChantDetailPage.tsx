@@ -8,6 +8,8 @@ import { resolveChantWithDevFallback } from '../utils/chantFallback';
 import { isChantPublic, isAdminViewer } from '../utils/chantVisibility';
 import { recordChantView } from '../utils/analytics';
 import UploadChantModal from '../components/UploadChantModal';
+import ChantCard from '../components/ChantCard';
+import { relatedChants } from '../utils/relatedChants';
 import { ChantPdfRow, loadChantPdfs } from '../utils/chantPdfs';
 import { stampHeaderFooter } from '../utils/pdfStamp';
 import { downloadBytes } from '../utils/pdfBooklet';
@@ -399,10 +401,21 @@ interface ChantDetailPageProps {
   chantId: string | null;
   onBack: () => void;
   onNavigate?: (page: import('../types').Page) => void;
+  onViewChant?: (chantId: string) => void;
+  bookletChantIds?: string[];
+  onToggleBookletChant?: (chant: Chant) => void;
 }
 
-const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) => {
+const ChantDetailPage = ({
+  chantId,
+  onBack,
+  onNavigate,
+  onViewChant,
+  bookletChantIds = [],
+  onToggleBookletChant,
+}: ChantDetailPageProps) => {
   const [chant, setChant] = useState<Chant | null>(null);
+  const [chantPool, setChantPool] = useState<Chant[]>([]);
   const [isLoadingChant, setIsLoadingChant] = useState(true);
   const [chantError, setChantError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -410,6 +423,19 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
 
   useEffect(() => {
     setIsAdmin(localStorage.getItem('psaltikon_admin_authed') === 'true');
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void supabase
+      .from('chants')
+      .select('*')
+      .then(({ data }) => {
+        if (active && data) setChantPool(data as Chant[]);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -742,6 +768,11 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
     }
   };
 
+  const related = useMemo(
+    () => (chant ? relatedChants(chant, chantPool) : []),
+    [chant, chantPool]
+  );
+
   if (isLoadingChant) {
     return (
       <div className="detail-page">
@@ -1035,56 +1066,38 @@ const ChantDetailPage = ({ chantId, onBack, onNavigate }: ChantDetailPageProps) 
         </div>
       </motion.div>
 
-      {/* Related Chants */}
-      <motion.div
-        style={{ marginTop: '4rem' }}
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-      >
-        <h3 style={{ marginBottom: '1.5rem' }}>Related Chants</h3>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-            gap: '1rem',
-          }}
+      {/* Related Chants — similar tags and same-book chants, see utils/relatedChants */}
+      {related.length > 0 && (
+        <motion.div
+          style={{ marginTop: '4rem' }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
         >
-          {[]
-            .filter((c: Chant) => c.id !== chant.id && (c.service === chant.service || c.tone === chant.tone))
-            .slice(0, 3)
-            .map((relatedChant: Chant, index: number) => (
-              <motion.div
+          <h3 style={{ marginBottom: '1.5rem' }}>Related Chants</h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '1.5rem',
+            }}
+          >
+            {related.map((relatedChant, index) => (
+              <ChantCard
                 key={relatedChant.id}
-                style={{
-                  padding: '1rem',
-                  background: 'var(--bg-surface)',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-light)',
-                  cursor: 'pointer',
-                }}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{
-                  y: -4,
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>{relatedChant.title}</h4>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span className="badge badge-burgundy" style={{ fontSize: '0.7rem' }}>
-                    {relatedChant.tone}
-                  </span>
-                  <span className="badge badge-outline" style={{ fontSize: '0.7rem' }}>
-                    {relatedChant.service}
-                  </span>
-                </div>
-              </motion.div>
+                chant={relatedChant}
+                index={index}
+                showSaveButton={false}
+                onView={(id) => onViewChant?.(id)}
+                isInBooklet={bookletChantIds.includes(relatedChant.id)}
+                onToggleBooklet={
+                  onToggleBookletChant ? () => onToggleBookletChant(relatedChant) : undefined
+                }
+              />
             ))}
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
+      )}
 
       <UploadChantModal
         open={editOpen}

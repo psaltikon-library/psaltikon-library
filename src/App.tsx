@@ -222,6 +222,9 @@ function App() {
             chantId={selectedChantId}
             onBack={() => navigateTo('library')}
             onNavigate={navigateTo}
+            onViewChant={navigateToChant}
+            bookletChantIds={bookletChantIds}
+            onToggleBookletChant={toggleBookletChant}
           />
         );
       case 'phonetics':
