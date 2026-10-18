@@ -980,11 +980,18 @@ a:hover {
 }
 
 .chant-card-neume {
+  display: block;
   width: 60px;
   height: 60px;
   flex-shrink: 0;
-  object-fit: contain;
   margin: -8px -6px -8px 0;
+  /* The PNG is only a shape; the tone colour is the element's background. */
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
 .chant-card-title {

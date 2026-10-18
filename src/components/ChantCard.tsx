@@ -4,6 +4,7 @@ import { Chant } from '../types';
 import { supabase } from '../lib/supabase';
 import { saveChant, unsaveChant } from '../utils/savedChants';
 import { neumeForTone } from '../utils/toneNeumes';
+import { toneColor } from '../utils/tones';
 
 interface ChantCardProps {
   chant: Chant;
@@ -168,11 +169,16 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
               {chant.title}
             </h3>
             {neume && (
-              <motion.img
+              <motion.span
                 className="chant-card-neume"
-                src={neume}
-                alt=""
+                role="img"
+                aria-label={chant.tone || undefined}
                 title={chant.tone || undefined}
+                style={{
+                  backgroundColor: toneColor(chant.tone) || undefined,
+                  WebkitMaskImage: `url(${neume})`,
+                  maskImage: `url(${neume})`,
+                }}
                 whileHover={{ scale: 1.1 }}
                 transition={{ type: 'spring', stiffness: 400 }}
               />

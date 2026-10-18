@@ -9,9 +9,17 @@ import {
   Color,
 } from 'pdf-lib';
 import { Chant } from '../types';
+import { chantColor } from './tones';
 
 const MUTED = rgb(0.42, 0.4, 0.36);
 const BURGUNDY = rgb(0.545, 0.149, 0.208); // #8B2635
+
+const hexToRgb = (hex: string) =>
+  rgb(
+    parseInt(hex.slice(1, 3), 16) / 255,
+    parseInt(hex.slice(3, 5), 16) / 255,
+    parseInt(hex.slice(5, 7), 16) / 255
+  );
 
 const CONTACT_EMAIL = 'theorthodoxheritage@outlook.com';
 const DEFAULT_PHONETICS =
@@ -127,6 +135,9 @@ export async function stampHeaderFooter(
   const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
 
   const header = headerLine(chant);
+  // Tone/feast colour for the text; chants with neither keep the original look.
+  const accentHex = chantColor(chant);
+  const accent = accentHex ? hexToRgb(accentHex) : null;
   const copyrightPrefix = `© ${new Date().getFullYear()} The Orthodox Heritage · `;
 
   // Optional footer lines stacked above the always-present copyright line.
@@ -164,13 +175,13 @@ export async function stampHeaderFooter(
     const startX = (page.getWidth() - (prefixW + emailW)) / 2;
     const emailX = startX + prefixW;
 
-    page.drawText(copyrightPrefix, { x: startX, y, size: FOOT_SIZE, font, color: MUTED });
-    page.drawText(CONTACT_EMAIL, { x: emailX, y, size: FOOT_SIZE, font, color: BURGUNDY });
+    page.drawText(copyrightPrefix, { x: startX, y, size: FOOT_SIZE, font, color: accent ?? MUTED });
+    page.drawText(CONTACT_EMAIL, { x: emailX, y, size: FOOT_SIZE, font, color: accent ?? BURGUNDY });
     page.drawLine({
       start: { x: emailX, y: y - 1.5 },
       end: { x: emailX + emailW, y: y - 1.5 },
       thickness: 0.5,
-      color: BURGUNDY,
+      color: accent ?? BURGUNDY,
       opacity: 0.8,
     });
     addLinkAnnotation(
@@ -186,7 +197,7 @@ export async function stampHeaderFooter(
 
     // Header — title line with a thin gold rule beneath it.
     if (header) {
-      drawCentered(page, header, height - 24, bold, HEADER_SIZE, BURGUNDY);
+      drawCentered(page, header, height - 24, bold, HEADER_SIZE, accent ?? BURGUNDY);
       page.drawRectangle({
         x: MARGIN,
         y: height - 31,
@@ -210,7 +221,7 @@ export async function stampHeaderFooter(
     });
     optionalLines.forEach((line, i) => {
       const y = FOOT_BOTTOM + (n - 1 - i) * FOOT_GAP;
-      drawCentered(page, line.text, y, line.font, FOOT_SIZE, MUTED);
+      drawCentered(page, line.text, y, line.font, FOOT_SIZE, accent ?? MUTED);
     });
     drawCopyright(page, FOOT_BOTTOM);
   }
