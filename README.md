@@ -14,9 +14,10 @@
 <img alt="Byzantine Chant" src="https://img.shields.io/badge/Orthodox%20Byzantine%20Chant-Sacred%20Music-6f42c1?style=for-the-badge&logo=bookstack&logoColor=white" />
 <img alt="Resources" src="https://img.shields.io/badge/Resources-Free%20for%20All-198754?style=for-the-badge&logo=heart&logoColor=white" />
 <img alt="Focus" src="https://img.shields.io/badge/Focus-Accessibility%20%26%20Tradition-0d6efd?style=for-the-badge&logo=accessibility&logoColor=white" />
-[![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)
 
 </div>
+
+[![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)]]
 
 ---
 
