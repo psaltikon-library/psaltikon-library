@@ -17,6 +17,8 @@
 
 </div>
 
+[![psaltikon-library/psaltikon-library, explained in a one-minute video](https://gitdiagram.com/api/video/file?username=psaltikon-library&repo=psaltikon-library&format=poster)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)
+
 ---
 
 ## 🎯 Our Mission
