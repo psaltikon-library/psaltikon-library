@@ -17,7 +17,7 @@
 
 </div>
 
-[![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)]]
+<t/>[![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)
 
 ---
 
