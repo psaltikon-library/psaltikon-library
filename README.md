@@ -17,14 +17,13 @@
 
 </div>
 
-<t/>[![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)
-
 ---
 
 ## 🎯 Our Mission
 
 > ☦️ **Preserving, sharing, and making Orthodox Byzantine chant more accessible**  
 > for the glory of God and the edification of the faithful.
+> [![Watch a one-minute video tour of psaltikon-library](https://gitdiagram.com/video-badge.svg)](https://gitdiagram.com/psaltikon-library/psaltikon-library/video)
 
 ---
 
