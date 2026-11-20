@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import OrthodoxCross from "../components/OrthodoxCross";
 import { motion, AnimatePresence } from "framer-motion";
 import ChantCard from "../components/ChantCard";
 import UploadChantModal from "../components/UploadChantModal";
@@ -174,6 +173,19 @@ const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: Lib
       matchesComposer
     );
   });
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filterFields = [
+    { id: "part", label: "Part of service", value: selectedPart, set: setSelectedPart, options: filterOptions.parts },
+    { id: "tone", label: "Tone (echos)", value: selectedTone, set: setSelectedTone, options: filterOptions.tones },
+    { id: "service", label: "Service", value: selectedService, set: setSelectedService, options: filterOptions.services },
+    { id: "feast", label: "Feast", value: selectedFeast, set: setSelectedFeast, options: filterOptions.feasts },
+    { id: "language", label: "Language", value: selectedLanguage, set: setSelectedLanguage, options: filterOptions.languages },
+    { id: "composer", label: "Composer", value: selectedComposer, set: setSelectedComposer, options: filterOptions.composers },
+  ];
+  const activeFilterCount = filterFields.filter((field) => field.value !== field.options[0]).length;
+  const hasAnyFilter = activeFilterCount > 0 || searchQuery.trim() !== "";
 
   const clearFilters = () => {
     setSelectedFeast("All Feasts");
@@ -368,275 +380,137 @@ const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: Lib
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="page-with-sidebar">
-        {/* Sidebar */}
-        <motion.aside
-          className="sidebar"
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="sidebar-header">
-            <h3 className="sidebar-title"><OrthodoxCross size={15} className="cross-inline" /> Filters</h3>
-            <motion.button
-              className="btn btn-ghost btn-sm"
-              onClick={clearFilters}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Clear All
-            </motion.button>
+      <div className="library-page">
+        <header className="library-head">
+          <div>
+            <h1 className="library-title">Chant library</h1>
+            <p className="library-count" aria-live="polite">
+              Showing {filteredChants.length} of {chants.length} chants
+            </p>
           </div>
 
-          <div className="search-container">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search chants..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <label className="filter-label">Part of Service</label>
-            <select
-              className="filter-select"
-              value={selectedPart}
-              onChange={(e) => setSelectedPart(e.target.value)}
-            >
-              {filterOptions.parts.map((part) => (
-                <option key={part} value={part}>
-                  {part}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <label className="filter-label">Tone (Echos)</label>
-            <select
-              className="filter-select"
-              value={selectedTone}
-              onChange={(e) => setSelectedTone(e.target.value)}
-            >
-              {filterOptions.tones.map((tone) => (
-                <option key={tone} value={tone}>
-                  {tone}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <label className="filter-label">Service</label>
-            <select
-              className="filter-select"
-              value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
-            >
-              {filterOptions.services.map((service) => (
-                <option key={service} value={service}>
-                  {service}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <label className="filter-label">Feast</label>
-            <select
-              className="filter-select"
-              value={selectedFeast}
-              onChange={(e) => setSelectedFeast(e.target.value)}
-            >
-              {filterOptions.feasts.map((feast) => (
-                <option key={feast} value={feast}>
-                  {feast}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <label className="filter-label">Language</label>
-            <select
-              className="filter-select"
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-            >
-              {filterOptions.languages.map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div
-            className="filter-group"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <label className="filter-label">Composer</label>
-            <select
-              className="filter-select"
-              value={selectedComposer}
-              onChange={(e) => setSelectedComposer(e.target.value)}
-            >
-              {filterOptions.composers.map((composer) => (
-                <option key={composer} value={composer}>
-                  {composer}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-        </motion.aside>
-
-        {/* Main Content */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="chants-header">
-            <div>
-              <motion.h1
-                style={{ fontSize: "2rem", marginBottom: "0.5rem" }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+          {isAdmin && (
+            <div className="library-admin">
+              <button className="btn btn-primary" onClick={handleOpenUploadModal}>
+                Upload a Chant
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => void handleApproveAll()}
+                disabled={isApprovingAll}
               >
-                Chant Library
-              </motion.h1>
-
-              <p className="chants-count">
-                Showing {filteredChants.length} of {chants.length} chants
-              </p>
-
-              {isAdmin && (
-                <motion.div
-                  style={{
-                    marginTop: "1rem",
-                    display: "flex",
-                    gap: "0.75rem",
-                    flexWrap: "wrap",
-                  }}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                >
-                  <motion.button
-                    className="btn btn-primary"
-                    onClick={handleOpenUploadModal}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Upload a Chant
-                  </motion.button>
-
-                  <motion.button
-                    className="btn btn-secondary"
-                    onClick={() => void handleApproveAll()}
-                    disabled={isApprovingAll}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {isApprovingAll ? "Approving..." : "Approve All"}
-                  </motion.button>
-                  <motion.button
-                    className="btn btn-secondary"
-                    onClick={() => void handleHideAll()}
-                    disabled={isHidingAll}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {isHidingAll ? "Hiding..." : "Hide All"}
-                  </motion.button>
-                </motion.div>
-              )}
+                {isApprovingAll ? "Approving..." : "Approve All"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => void handleHideAll()}
+                disabled={isHidingAll}
+              >
+                {isHidingAll ? "Hiding..." : "Hide All"}
+              </button>
             </div>
+          )}
+        </header>
+
+        <section className="library-filters" aria-label="Search and filters">
+          <div className="library-filters__top">
+            <div className="library-search" role="search">
+              <label className="library-search__label" htmlFor="library-search-input">
+                Search chants
+              </label>
+              <input
+                id="library-search-input"
+                type="search"
+                className="library-search__input"
+                placeholder="Search by title"
+                autoComplete="off"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="library-filters__toggle"
+              aria-expanded={filtersOpen}
+              aria-controls="library-filter-panel"
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              Filters
+              {activeFilterCount > 0 && <span className="library-filters__badge">{activeFilterCount}</span>}
+              <svg className="library-filters__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {activeFilterCount > 0 && !filtersOpen && (
+              <p className="library-filters__summary">
+                {filterFields
+                  .filter((field) => field.value !== field.options[0])
+                  .map((field) => field.value)
+                  .join(" \u00b7 ")}
+              </p>
+            )}
+
+            {hasAnyFilter && (
+              <button type="button" className="home-link library-filters__clear" onClick={clearFilters}>
+                Clear all
+              </button>
+            )}
           </div>
 
+          <div
+            id="library-filter-panel"
+            className={`library-filters__panel ${filtersOpen ? "is-open" : ""}`}
+          >
+          <div className="library-filters__grid">
+            {filterFields.map((field) => (
+              <div className="library-field" key={field.id}>
+                <label className="library-field__label" htmlFor={`library-filter-${field.id}`}>
+                  {field.label}
+                </label>
+                <select
+                  id={`library-filter-${field.id}`}
+                  className="library-field__select"
+                  data-active={field.value !== field.options[0] || undefined}
+                  value={field.value}
+                  onChange={(e) => field.set(e.target.value)}
+                >
+                  {field.options.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          </div>
+        </section>
+
+        <div>
           <AnimatePresence mode="wait">
             {isLoadingChants ? (
               <motion.div
                 key="chants-loading"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  textAlign: "center",
-                  padding: "4rem 2rem",
-                  background: "var(--bg-surface)",
-                  borderRadius: "16px",
-                  border: "1px solid var(--border-light)",
-                }}
+                className="library-state"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                aria-busy="true"
               >
-                <div
-                  style={{
-                    fontSize: "2.5rem",
-                    marginBottom: "1rem",
-                    opacity: 0.35,
-                  }}
-                >
-                  ⏳
-                </div>
-                <h3 style={{ marginBottom: "0.5rem" }}>Loading chants...</h3>
-                <p style={{ color: "var(--text-muted)" }}>
-                  Pulling chant records from the library database.
-                </p>
+                <h2 className="library-state__title">Loading chants</h2>
+                <p className="library-state__text">Pulling chant records from the library.</p>
               </motion.div>
             ) : chantsError ? (
               <motion.div
                 key="chants-error"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  textAlign: "center",
-                  padding: "4rem 2rem",
-                  background: "var(--bg-surface)",
-                  borderRadius: "16px",
-                  border: "1px solid var(--border-light)",
-                }}
+                className="library-state"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                role="alert"
               >
-                <div
-                  style={{
-                    fontSize: "2.5rem",
-                    marginBottom: "1rem",
-                    opacity: 0.35,
-                  }}
-                >
-                  ⚠️
-                </div>
-                <h3 style={{ marginBottom: "0.5rem" }}>Could not load chants</h3>
-                <p style={{ color: "var(--text-muted)" }}>{chantsError}</p>
+                <h2 className="library-state__title">Could not load chants</h2>
+                <p className="library-state__text">{chantsError}</p>
               </motion.div>
             ) : filteredChants.length > 0 ? (
               <motion.div
@@ -669,42 +543,19 @@ const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: Lib
             ) : (
               <motion.div
                 key="chants-empty"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  textAlign: "center",
-                  padding: "4rem 2rem",
-                  background: "var(--bg-surface)",
-                  borderRadius: "16px",
-                  border: "1px solid var(--border-light)",
-                }}
+                className="library-state"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
               >
-                <div
-                  style={{
-                    fontSize: "3rem",
-                    marginBottom: "1rem",
-                    opacity: 0.3,
-                  }}
-                >
-                  🔍
-                </div>
-                <h3 style={{ marginBottom: "0.5rem" }}>No chants found</h3>
-                <p style={{ color: "var(--text-muted)" }}>
-                  Try adjusting your filters or search terms
-                </p>
-                <motion.button
-                  className="btn btn-secondary"
-                  style={{ marginTop: "1.5rem" }}
-                  onClick={clearFilters}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Clear Filters
-                </motion.button>
+                <h2 className="library-state__title">No chants found</h2>
+                <p className="library-state__text">Try fewer filters or a different search.</p>
+                <button type="button" className="home-link" onClick={clearFilters}>
+                  Clear all filters
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
       </div>
 
       <UploadChantModal
