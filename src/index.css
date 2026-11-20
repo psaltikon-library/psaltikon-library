@@ -5660,3 +5660,276 @@ button.home-tone__body:focus-visible::before {
     transition: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHANT ENTRY (ChantCard)
+   One entry of a chant book, one fixed size. The height is a token, and inside
+   it the main column is a grid of fixed rows, so nothing can push anything.
+   Title clamps to two lines, meta and feast to one; the full title is in the
+   link's title attribute and on the chant page.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chant-entry {
+  --entry-h: 224px;
+  /* Fills and large marks: the tone pulled 12% toward ink. Small text a little less for Tone 3. */
+  --d: color-mix(in srgb, var(--tone) 88%, #2d2a26);
+  --tt: color-mix(in srgb, var(--tone) var(--tp, 88%), #2d2a26);
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  height: var(--entry-h);
+  background: #fff;
+  border: 1px solid rgba(45, 42, 38, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 200ms var(--ease-out);
+}
+
+.chant-entry.has-admin { --entry-h: 260px; }
+.chant-entry[data-tone='3'] { --tp: 62%; }
+.chant-entry[data-tone='2'] { --ns: 46px; }
+.chant-entry[data-tone='none'] { --tt: #5c574f; }
+
+.chant-entry__spine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 10px;
+  background: var(--d);
+  transition: background-color 200ms var(--ease-out);
+}
+
+.chant-entry__neume {
+  flex: none;
+  display: block;
+  width: var(--ns, 60px);
+  height: var(--ns, 60px);
+  margin-top: -4px;
+  background: #f8f6f3;
+  -webkit-mask: var(--n) center / contain no-repeat;
+  mask: var(--n) center / contain no-repeat;
+}
+
+.chant-entry__main {
+  display: grid;
+  grid-template-rows: 38px 74px 24px 30px minmax(0, 1fr) 44px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.chant-entry.has-admin .chant-entry__main { grid-template-rows: 38px 74px 24px 30px minmax(0, 1fr) 44px 36px; }
+.chant-entry__main > * { min-width: 0; min-height: 0; }
+
+.chant-entry__head {
+  grid-row: 1;
+  margin: 0 14px;
+  padding: 0 0 8px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chant-entry__rubric {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--tt);
+}
+
+.chant-entry__rubric b {
+  font: 500 0.75rem/1 'Cinzel', serif;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.chant-entry__rubric em {
+  font: italic 400 0.9375rem/1 'EB Garamond', serif;
+  white-space: nowrap;
+}
+
+.chant-entry__title {
+  grid-row: 2;
+  margin: 0;
+  padding: 11px 16px 0 14px;
+  overflow: hidden;
+  font: 500 1.5rem/1.1 'Cormorant Garamond', serif;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+
+.chant-entry__link {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 200ms var(--ease-out);
+}
+
+/* The whole card is the target for the title link. */
+.chant-entry__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.chant-entry__link:focus-visible { outline: none; }
+.chant-entry__link:focus-visible::after { outline: 2px solid #221b1a; outline-offset: -3px; }
+
+.chant-entry__meta {
+  grid-row: 3;
+  margin: 0;
+  padding: 0 16px 0 14px;
+  font: 400 0.875rem/24px 'Inter', sans-serif;
+  color: #5c574f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chant-entry__foot {
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0 16px 0 14px;
+}
+
+.chant-entry__feast {
+  flex: 1;
+  min-width: 0;
+  font: italic 400 1.0625rem/1.3 'EB Garamond', serif;
+  color: var(--tt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chant-entry__tag {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--tt) 65%, #fff);
+  border-radius: 3px;
+  font: 500 0.75rem/1.3 'Inter', sans-serif;
+  color: var(--tt);
+}
+
+.chant-entry__actions {
+  grid-row: 6;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 16px 0 14px;
+  border-top: 1px solid rgba(45, 42, 38, 0.12);
+}
+
+.chant-entry__act {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: 500 0.875rem/1 'Inter', sans-serif;
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 5px;
+  transition: text-decoration-color 200ms;
+}
+
+.chant-entry__act:hover:not(:disabled) { text-decoration-color: currentColor; }
+.chant-entry__act:disabled { cursor: wait; opacity: 0.6; }
+.chant-entry__act svg { flex: none; color: var(--tt); }
+.chant-entry__act[aria-pressed='true'] { color: var(--tt); }
+
+.chant-entry__act:focus-visible,
+.chant-entry__admin :is(button, select):focus-visible {
+  outline: 2px solid #221b1a;
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+.chant-entry__admin {
+  grid-row: 7;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px 0 14px;
+  background: rgba(45, 42, 38, 0.045);
+  border-top: 1px solid rgba(45, 42, 38, 0.12);
+  font: 400 0.75rem/1 'Inter', sans-serif;
+  color: #5c574f;
+}
+
+.chant-entry__admin .grow { flex: 1; }
+.chant-entry__admin label { display: flex; align-items: center; gap: 6px; }
+
+.chant-entry__admin select {
+  font: 500 0.75rem/1 'Inter', sans-serif;
+  color: var(--text-primary);
+  background: #fff;
+  border: 1px solid rgba(45, 42, 38, 0.28);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.chant-entry__admin button {
+  height: 30px;
+  padding: 0 2px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: 500 0.75rem/1 'Inter', sans-serif;
+  color: #5c574f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chant-entry__admin .danger { color: #6b1d29; }
+
+/* Saved: a bookmark ribbon hanging from the head. In a booklet: a frame in the tone's own ink. */
+.chant-entry.is-saved::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: -1px;
+  right: 12px;
+  width: 13px;
+  height: 30px;
+  background: #8b2635;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+}
+
+.chant-entry.is-picked,
+.chant-entry.is-picked:hover { border-color: var(--d); box-shadow: inset 0 0 0 1px var(--d); }
+
+.chant-entry:hover { border-color: color-mix(in srgb, var(--d) 70%, #fff); }
+.chant-entry:hover .chant-entry__spine { background: color-mix(in srgb, var(--d) 86%, #221b1a); }
+.chant-entry:hover .chant-entry__link { text-decoration-color: var(--tt); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chant-entry,
+  .chant-entry * { transition: none !important; }
+}

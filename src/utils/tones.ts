@@ -12,6 +12,18 @@ export const TONE_COLORS = [
   '#C04F15', // Tone 8
 ];
 
+// Traditional names of the eight tones, in order (index 0 = Tone 1).
+export const TONE_NAMES = [
+  'Protos',
+  'Deuteros',
+  'Tritos',
+  'Tetartos',
+  'Plagal of the first',
+  'Plagal of the second',
+  'Varys',
+  'Plagal of the fourth',
+];
+
 // Feasts that carry their own colour. Order matters: "Nativity of the
 // Theotokos" mentions both, and is a Theotokos feast, so Theotokos is checked first.
 const FEAST_COLORS: Array<{ test: RegExp; color: string }> = [

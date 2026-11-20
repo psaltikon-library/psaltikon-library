@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Chant } from '../types';
 import { supabase } from '../lib/supabase';
 import { saveChant, unsaveChant } from '../utils/savedChants';
 import { neumeForTone } from '../utils/toneNeumes';
-import { toneColor } from '../utils/tones';
+import { TONE_COLORS, TONE_NAMES, toneNumber } from '../utils/tones';
 
 interface ChantCardProps {
   chant: Chant;
@@ -45,26 +46,6 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
   const handleComingSoon = (action: string) => {
     alert(`${action} feature coming soon! This will be available in a future update.`);
   };
-
-  const chantStatus = status;
-  const statusBubbleStyles =
-    chantStatus === 'approved'
-      ? {
-          background: 'rgba(34, 197, 94, 0.12)',
-          border: '1px solid rgba(34, 197, 94, 0.28)',
-          color: '#16a34a',
-        }
-      : chantStatus === 'hidden'
-        ? {
-            background: 'rgba(107, 70, 193, 0.12)',
-            border: '1px solid rgba(107, 70, 193, 0.22)',
-            color: 'var(--purple)',
-          }
-        : {
-            background: 'rgba(107, 114, 128, 0.12)',
-            border: '1px solid rgba(107, 114, 128, 0.22)',
-            color: '#6b7280',
-          };
 
   const handleEditClick = () => {
     if (onEdit) {
@@ -136,217 +117,139 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
     }
   };
 
+  const number = toneNumber(chant.tone);
   const neume = neumeForTone(chant.tone);
+  const base = number ? TONE_COLORS[number - 1] : null;
+  // "Tone 5 (Friyos)": the bracketed name is the more exact one; otherwise the traditional name.
+  const variant = chant.tone?.match(/\(([^)]+)\)/)?.[1]?.trim();
+  const rubricLabel = number ? `Tone ${number}` : chant.tone?.trim() || 'No tone';
+  const rubricName = number ? variant || TONE_NAMES[number - 1] : null;
+  const meta = [chant.part, chant.service, chant.language].filter(Boolean).join(' \u00b7 ');
+
+  const style = {
+    ['--tone' as string]: base ?? '#7E796F',
+    ['--n' as string]: neume ? `url(${neume})` : undefined,
+  } as React.CSSProperties;
 
   return (
-    <motion.div
-      className="chant-card"
-      initial={{ opacity: 0, y: 30 }}
+    <motion.article
+      className={[
+        'chant-entry',
+        isAdmin ? 'has-admin' : '',
+        isSavedState ? 'is-saved' : '',
+        isInBooklet ? 'is-picked' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={style}
+      data-tone={number ?? 'none'}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
-      transition={{ 
-        duration: 0.5, 
-        delay: index * 0.08,
-        ease: [0.16, 1, 0.3, 1]
-      }}
-      whileHover={{ 
-        y: -6,
-        transition: { duration: 0.3 }
-      }}
-      onClick={() => onView(chant.id)}
+      transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.05, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="chant-card-header" style={{ alignItems: 'flex-start' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '0.75rem',
-            }}
+      <div className="chant-entry__spine" aria-hidden="true">
+        {neume && <span className="chant-entry__neume" />}
+      </div>
+
+      <div className="chant-entry__main">
+        <header className="chant-entry__head">
+          <p className="chant-entry__rubric">
+            <b>{rubricLabel}</b>
+            {rubricName && <em>{rubricName}</em>}
+          </p>
+        </header>
+
+        <h3 className="chant-entry__title">
+          <button
+            type="button"
+            className="chant-entry__link"
+            title={chant.title}
+            onClick={() => onView(chant.id)}
           >
-            <h3 className="chant-card-title">
-              {chant.title}
-            </h3>
-            {neume && (
-              <motion.span
-                className="chant-card-neume"
-                role="img"
-                aria-label={chant.tone || undefined}
-                title={chant.tone || undefined}
-                style={{
-                  backgroundColor: toneColor(chant.tone) || undefined,
-                  WebkitMaskImage: `url(${neume})`,
-                  maskImage: `url(${neume})`,
-                }}
-                whileHover={{ scale: 1.1 }}
-                transition={{ type: 'spring', stiffness: 400 }}
-              />
-            )}
-          </div>
-          {isAdmin && (
-            <div
-              style={{
-                marginTop: '0.45rem',
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
+            {chant.title}
+          </button>
+        </h3>
+
+        <p className="chant-entry__meta">{meta}</p>
+
+        <p className="chant-entry__foot">
+          <span className="chant-entry__feast">{chant.feast}</span>
+          {chant.hasPhonetics && <span className="chant-entry__tag">Phonetics</span>}
+        </p>
+
+        <footer className="chant-entry__actions">
+          {showSaveButton && (
+            <button
+              type="button"
+              className="chant-entry__act"
+              onClick={handleSaveClick}
+              disabled={isSaving}
+              aria-pressed={isSavedState}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill={isSavedState ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">
+                <polygon points="12 3 14.9 9 21.5 9.8 16.6 14.3 17.9 21 12 17.7 6.1 21 7.4 14.3 2.5 9.8 9.1 9" />
+              </svg>
+              {isSavedState ? 'Saved' : 'Save'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="chant-entry__act"
+            onClick={() => {
+              if (onToggleBooklet) {
+                onToggleBooklet(chant.id);
+                return;
+              }
+              handleComingSoon('Booklet');
+            }}
+            aria-pressed={onToggleBooklet ? isInBooklet : undefined}
+          >
+            {onToggleBooklet && isInBooklet ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 12 10 18 20 6" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            )}
+            {onToggleBooklet && isInBooklet ? 'In booklet' : 'Add to booklet'}
+          </button>
+        </footer>
+
+        {isAdmin && (
+          <div className="chant-entry__admin">
+            <label>
+              Status
               <select
-                value={chantStatus}
+                value={status}
                 disabled={isUpdatingStatus}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  void handleStatusChange(e.target.value);
-                }}
-                style={{
-                  ...statusBubbleStyles,
-                  textTransform: 'capitalize',
-                  borderRadius: '999px',
-                  padding: '0.35rem 2rem 0.35rem 0.8rem',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: isUpdatingStatus ? 'wait' : 'pointer',
-                  outline: 'none',
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  lineHeight: 1.2,
-                }}
+                aria-label="Status"
+                onChange={(e) => void handleStatusChange(e.target.value)}
               >
-                <option value="pending">pending</option>
-                <option value="approved">approved</option>
-                <option value="hidden">hidden</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="hidden">Hidden</option>
               </select>
-              <span
-                style={{
-                  position: 'absolute',
-                  right: '0.75rem',
-                  pointerEvents: 'none',
-                  color: 'currentColor',
-                  fontSize: '0.7rem',
-                  opacity: 0.8,
-                }}
-              >
-                ▾
-              </span>
-            </div>
-          )}
-          {chant.titleGreek && (
-            <p className="chant-card-subtitle">{chant.titleGreek}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="chant-card-badges">
-        <span className="badge badge-burgundy">
-          {chant.tone}
-        </span>
-        <span className="badge badge-gold">
-          {chant.part}
-        </span>
-        <span className="badge badge-outline">
-          {chant.service}
-        </span>
-        {chant.hasPhonetics && (
-          <span className="badge badge-purple">
-            Phonetics
-          </span>
-        )}
-        {isSavedState && (
-          <span className="badge badge-success">
-            Saved
-          </span>
+            </label>
+            <span className="grow" />
+            <button type="button" onClick={handleEditClick}>
+              Edit
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
         )}
       </div>
-
-      <p style={{ 
-        fontSize: '0.95rem', 
-        color: 'var(--text-muted)', 
-        marginTop: '0.75rem',
-        marginBottom: 0 
-      }}>
-        {chant.feast}
-      </p>
-
-      <div className="chant-card-actions">
-        <motion.button
-          className="btn btn-primary btn-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView(chant.id);
-          }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-        >
-          View Chant
-        </motion.button>
-        {showSaveButton && (
-          <motion.button
-            className="btn btn-secondary btn-sm"
-            onClick={handleSaveClick}
-            disabled={isSaving}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {isSaving ? 'Saving...' : isSavedState ? '★ Saved' : '☆ Save'}
-          </motion.button>
-        )}
-        <motion.button
-          className={`btn btn-sm ${isInBooklet ? 'btn-primary' : 'btn-secondary'}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onToggleBooklet) {
-              onToggleBooklet(chant.id);
-              return;
-            }
-            handleComingSoon('Booklet');
-          }}
-          aria-pressed={onToggleBooklet ? isInBooklet : undefined}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-        >
-          {onToggleBooklet ? (
-            isInBooklet ? '✓ In Booklet' : '+ Booklet'
-          ) : (
-            <>
-              + Booklet
-              <span className="coming-soon-badge">Soon</span>
-            </>
-          )}
-        </motion.button>
-        {isAdmin && (
-          <motion.button
-            className="btn btn-secondary btn-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditClick();
-            }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            Edit
-          </motion.button>
-        )}
-        {isAdmin && (
-          <motion.button
-            className="btn btn-secondary btn-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteConfirm(true);
-            }}
-            disabled={isDeleting}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </motion.button>
-        )}
-
-      </div>
-      {showDeleteConfirm && (
+      {showDeleteConfirm &&
+        createPortal(
         <div
           onClick={(e) => {
             e.stopPropagation();
@@ -474,8 +377,8 @@ const ChantCard = ({ chant, onView, onEdit, onDelete, onSave, onUnsave, isSaved 
             </div>
           </div>
         </div>
-      )}
-    </motion.div>
+      , document.body)}
+    </motion.article>
   );
 };
 

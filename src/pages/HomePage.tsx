@@ -4,7 +4,7 @@ import { Page, Chant } from '../types';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { excludePrivateChants } from '../utils/chantVisibility';
-import { TONE_COLORS, toneColor, toneNumber } from '../utils/tones';
+import { TONE_COLORS, TONE_NAMES, toneColor, toneNumber } from '../utils/tones';
 import { neumeForTone } from '../utils/toneNeumes';
 import { BOOK_DESCRIPTIONS, CHURCH_BOOKS } from '../utils/churchBooks';
 import { setLibraryPreset } from '../utils/libraryPreset';
@@ -17,18 +17,6 @@ interface HomePageProps {
 }
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-
-// Traditional names of the eight tones, in order.
-const TONE_NAMES = [
-  'Protos',
-  'Deuteros',
-  'Tritos',
-  'Tetartos',
-  'Plagal of the first',
-  'Plagal of the second',
-  'Varys',
-  'Plagal of the fourth',
-];
 
 interface LibraryFacts {
   chants: number;
