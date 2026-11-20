@@ -9,6 +9,8 @@ import { resolveChantsWithDevFallback } from "../utils/chantFallback";
 import { isChantPublic } from "../utils/chantVisibility";
 import { getSavedChantIds } from "../utils/savedChants";
 import { compareFilterValues } from "../utils/filterOptions";
+import { clearLibraryPreset, peekLibraryPreset } from "../utils/libraryPreset";
+import { toneNumber } from "../utils/tones";
 
 interface LibraryPageProps {
   onViewChant: (id: string) => void;
@@ -64,11 +66,15 @@ const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: Lib
   const [chantsError, setChantsError] = useState("");
   const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  // A search or tone chosen on the homepage (read once, cleared on mount).
+  const [preset] = useState(peekLibraryPreset);
+  useEffect(() => clearLibraryPreset, []);
+
+  const [searchQuery, setSearchQuery] = useState(preset?.query ?? "");
   const [selectedFeast, setSelectedFeast] = useState("All Feasts");
   const [selectedService, setSelectedService] = useState("All Services");
   const [selectedPart, setSelectedPart] = useState("All Parts");
-  const [selectedTone, setSelectedTone] = useState("All Tones");
+  const [selectedTone, setSelectedTone] = useState(preset?.tone ?? "All Tones");
   const [selectedLanguage, setSelectedLanguage] = useState("All Languages");
   const [selectedComposer, setSelectedComposer] = useState("All Composers");
 
@@ -148,8 +154,11 @@ const LibraryPage = ({ onViewChant, bookletChantIds, onToggleBookletChant }: Lib
       selectedService === "All Services" || chant.service === selectedService;
     const matchesPart =
       selectedPart === "All Parts" || chant.part === selectedPart;
+    // A plain "Tone 5" also takes in variants such as "Tone 5 (Friyos)".
     const matchesTone =
-      selectedTone === "All Tones" || chant.tone === selectedTone;
+      selectedTone === "All Tones" ||
+      chant.tone === selectedTone ||
+      (/^Tone [1-8]$/.test(selectedTone) && toneNumber(chant.tone) === toneNumber(selectedTone));
     const matchesLanguage =
       selectedLanguage === "All Languages" || chant.language === selectedLanguage;
     const matchesComposer =

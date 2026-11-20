@@ -16,6 +16,7 @@ import BookletBuilderModal from './components/BookletBuilderModal';
 import AuthModal from './components/AuthModal';
 import { Page, Chant } from './types';
 import { recordChantView, recordPageView } from './utils/analytics';
+import { signOutIfBanned } from './utils/accountStatus';
 
 const STORAGE_PAGE_KEY = 'psaltikon_current_page';
 const STORAGE_CHANT_KEY = 'psaltikon_selected_chant';
@@ -109,6 +110,18 @@ function App() {
       setBookletMinimized(false);
     }
   }, [bookletChants.length, bookletMinimized]);
+
+  // A suspended account is signed out as soon as the app loads.
+  useEffect(() => {
+    void signOutIfBanned().then((wasBanned) => {
+      if (wasBanned) {
+        window.alert(
+          'This account has been suspended. If you think this is a mistake, contact theorthodoxheritage@outlook.com.'
+        );
+        window.location.reload();
+      }
+    });
+  }, []);
 
   // The static HTML loader (index.html) is only there for a slow boot; drop it
   // as soon as the app has mounted so the home page shows straight away.

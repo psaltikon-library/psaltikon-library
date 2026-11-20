@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { Page } from '../types';
+import TrafficMetrics from '../components/TrafficMetrics';
 import {
   AdminDashboardData,
+  AdminProfileRow,
   loadAdminDashboardData,
   setUserAdminStatus,
+  setUserBanStatus,
 } from '../utils/adminDashboard';
 import {
   ChantSubmission,
@@ -39,8 +42,11 @@ export default function AdminPage({ onNavigate }: Props) {
   const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'metrics'>('dashboard');
+  const [metricsRefreshKey, setMetricsRefreshKey] = useState(0);
   const [error, setError] = useState('');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [banningUserId, setBanningUserId] = useState<string | null>(null);
 
   const [filterOptions, setFilterOptions] = useState<FilterOptionsByCategory | null>(null);
   const [filterOptionsError, setFilterOptionsError] = useState('');
@@ -122,6 +128,7 @@ export default function AdminPage({ onNavigate }: Props) {
 
   const refresh = async () => {
     setIsRefreshing(true);
+    setMetricsRefreshKey((key) => key + 1);
     await loadDashboard();
     setIsRefreshing(false);
   };
@@ -234,6 +241,31 @@ export default function AdminPage({ onNavigate }: Props) {
     }
   };
 
+  const handleToggleBan = async (user: AdminProfileRow, nextBanned: boolean) => {
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'this user';
+    let reason: string | null = null;
+
+    if (nextBanned) {
+      reason = window.prompt(
+        `Ban ${name}?\n\nThey will be signed out, unable to log in, and unable to add or change anything on the site. ` +
+          'Banning does not stop someone browsing while logged out.\n\nReason (optional, only admins see it):'
+      );
+      if (reason === null) return;
+    } else if (!window.confirm(`Restore access for ${name}?`)) {
+      return;
+    }
+
+    try {
+      setBanningUserId(user.id);
+      await setUserBanStatus(user.id, nextBanned, reason);
+      await refresh();
+    } catch (banError) {
+      alert(banError instanceof Error ? banError.message : 'Failed to update this account.');
+    } finally {
+      setBanningUserId(null);
+    }
+  };
+
   if (!isAuthorized) {
     return null;
   }
@@ -276,7 +308,27 @@ export default function AdminPage({ onNavigate }: Props) {
         </div>
       )}
 
-      {isLoading || !dashboard ? (
+      <div className="admin-tabs" role="tablist" aria-label="Admin sections">
+        {([
+          ['dashboard', 'Dashboard'],
+          ['metrics', 'Metrics'],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={adminTab === id}
+            className={`admin-tab${adminTab === id ? ' is-active' : ''}`}
+            onClick={() => setAdminTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {adminTab === 'metrics' ? (
+        <TrafficMetrics refreshKey={metricsRefreshKey} />
+      ) : isLoading || !dashboard ? (
         <div
           style={{
             textAlign: 'center',
@@ -615,7 +667,7 @@ export default function AdminPage({ onNavigate }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ fontSize: '1.35rem', marginBottom: 6 }}>Users</h2>
-                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Grant or revoke admin access from profiles.</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Grant or revoke admin access, and ban or restore accounts.</p>
               </div>
               <div className="badge badge-burgundy">{dashboard.users.filter((user) => user.admin).length.toLocaleString()} admins</div>
             </div>
@@ -642,6 +694,11 @@ export default function AdminPage({ onNavigate }: Props) {
                         <td style={{ padding: '0.9rem 0.5rem' }}>
                           <div style={{ fontWeight: 600 }}>{fullName || 'Unnamed user'}</div>
                           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{user.id}</div>
+                          {user.banned_at && user.ban_reason && (
+                            <div style={{ color: 'var(--burgundy)', fontSize: '0.88rem', marginTop: 4 }}>
+                              Ban reason: {user.ban_reason}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '0.9rem 0.5rem', color: 'var(--text-secondary)' }}>
                           {user.username || 'No username'}
@@ -653,12 +710,33 @@ export default function AdminPage({ onNavigate }: Props) {
                           <span className={`badge ${isAdmin ? 'badge-success' : 'badge-outline'}`}>
                             {isAdmin ? 'Admin' : 'User'}
                           </span>
+                          {user.banned_at && (
+                            <span
+                              className="badge badge-burgundy"
+                              style={{ marginLeft: 6 }}
+                              title={`Banned ${formatDate(user.banned_at)}`}
+                            >
+                              Banned
+                            </span>
+                          )}
                         </td>
-                        <td style={{ padding: '0.9rem 0.5rem', textAlign: 'right' }}>
+                        <td style={{ padding: '0.9rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          {!isAdmin && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              style={user.banned_at ? undefined : { color: 'var(--burgundy)' }}
+                              disabled={banningUserId === user.id}
+                              onClick={() => void handleToggleBan(user, !user.banned_at)}
+                            >
+                              {banningUserId === user.id ? 'Saving...' : user.banned_at ? 'Restore access' : 'Ban'}
+                            </button>
+                          )}{' '}
                           <button
                             type="button"
                             className="btn btn-secondary btn-sm"
-                            disabled={updatingUserId === user.id}
+                            disabled={updatingUserId === user.id || (!isAdmin && !!user.banned_at)}
+                            title={!isAdmin && user.banned_at ? 'Restore this account before granting admin access' : undefined}
                             onClick={() => void handleToggleAdmin(user.id, !isAdmin)}
                           >
                             {updatingUserId === user.id

@@ -9,6 +9,8 @@ export type AdminProfileRow = {
   last_name: string | null;
   admin: boolean;
   created_at: string;
+  banned_at?: string | null;
+  ban_reason?: string | null;
 };
 
 export type AdminSuggestionRow = {
@@ -90,7 +92,7 @@ export async function loadAdminDashboardData(): Promise<AdminDashboardData> {
     fetchCount('profiles'),
     supabase
       .from('profiles')
-      .select('id, username, first_name, last_name, admin, created_at')
+      .select('id, username, first_name, last_name, admin, created_at, banned_at, ban_reason')
       .order('created_at', { ascending: false }),
     supabase
       .from('chant_suggestions')
@@ -159,5 +161,18 @@ export async function setUserAdminStatus(userId: string, isAdmin: boolean): Prom
 
   if (error) {
     throw new Error(error.message || 'Failed to update admin access.');
+  }
+}
+
+/** Ban or restore an account. Admin-only on the server; see 20261021_member_activity_and_bans.sql. */
+export async function setUserBanStatus(userId: string, banned: boolean, reason?: string | null): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_user_ban', {
+    p_user_id: userId,
+    p_banned: banned,
+    p_reason: reason ?? null,
+  });
+
+  if (error) {
+    throw new Error(error.message || (banned ? 'Failed to ban this account.' : 'Failed to restore this account.'));
   }
 }

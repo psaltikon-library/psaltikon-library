@@ -17,6 +17,8 @@ interface HeaderProps {
   onExpandBooklet?: () => void;
 }
 
+type AccountAction = "profile" | "saved" | "suggestion" | "settings" | "admin" | "signout";
+
 const Header = ({
   currentPage,
   onNavigate,
@@ -41,32 +43,37 @@ const Header = ({
     };
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(event.target as Node)
-      ) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
         setAccountMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false);
+        setMobileMenuOpen(false);
       }
     };
 
     syncAuthState();
     window.addEventListener("storage", syncAuthState);
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       window.removeEventListener("storage", syncAuthState);
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
+  // The wordmark goes home, so the desktop nav leaves "Home" out; the phone menu keeps it.
   const navItems: { page: Page; label: string }[] = [
-    { page: "home", label: "Home" },
     { page: "library", label: "Library" },
     { page: "booklets", label: "Booklets" },
     { page: "services", label: "Services" },
     { page: "about", label: "About" },
   ];
-
 
   const handleNavClick = (page: Page) => {
     onNavigate(page);
@@ -95,166 +102,109 @@ const Header = ({
     setAccountMenuOpen((prev) => !prev);
   };
 
-  const handleAccountAction = (action: string) => {
+  const handleAccountAction = (action: AccountAction) => {
     setAccountMenuOpen(false);
     setMobileMenuOpen(false);
 
-    if (action === "admin") {
-      onNavigate("admin");
-      return;
-    }
-
-    if (action === "profile") {
-      window.alert("Profile page coming soon.");
-      return;
-    }
-
-    if (action === "saved") {
-      onNavigate("saved-items");
-      return;
-    }
-
-    if (action === "suggestion") {
-      onOpenSuggestion();
-      return;
-    }
-
-    if (action === "settings") {
-      window.alert("Account settings coming soon.");
-      return;
-    }
-
-    if (action === "signout") {
-      signOut();
-    }
+    if (action === "admin") return onNavigate("admin");
+    if (action === "saved") return onNavigate("saved-items");
+    if (action === "suggestion") return onOpenSuggestion();
+    if (action === "profile") return window.alert("Profile page coming soon.");
+    if (action === "settings") return window.alert("Account settings coming soon.");
+    if (action === "signout") return signOut();
   };
+
+  const accountItems: { action: AccountAction; label: string; show?: boolean }[] = [
+    { action: "profile", label: "Profile" },
+    { action: "saved", label: "Saved items" },
+    { action: "suggestion", label: "Suggest a chant" },
+    { action: "settings", label: "Settings" },
+    { action: "admin", label: "Admin", show: isAdminAuthed },
+  ];
+
+  const accountMenuItems = (
+    <>
+      {accountItems
+        .filter((item) => item.show !== false)
+        .map((item) => (
+          <button
+            key={item.action}
+            type="button"
+            onClick={() => handleAccountAction(item.action)}
+            className="account-menu-item"
+          >
+            <span>{item.label}</span>
+          </button>
+        ))}
+    </>
+  );
+
+  const accountTrigger = (
+    <button
+      type="button"
+      onClick={handleAccountClick}
+      className="site-login account-trigger"
+      aria-expanded={accountMenuOpen}
+      aria-haspopup="menu"
+    >
+      <span aria-hidden="true" className="account-trigger__icon">
+        <span className="account-trigger__bar" />
+        <span className="account-trigger__bar" />
+        <span className="account-trigger__bar" />
+      </span>
+      <span>Account</span>
+    </button>
+  );
 
   return (
     <>
-      <motion.header
-        className={`header ${isScrolled ? "scrolled" : ""}`}
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <div className="container">
-          <div className="header-inner">
-            <motion.div
-              className="logo"
-              onClick={() => onNavigate("home")}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <motion.div
-                className="logo-icon"
-                whileHover={{ rotate: [0, -5, 5, 0] }}
-                transition={{ duration: 0.5 }}
-              >
-                <OrthodoxCross size={26} />
-              </motion.div>
-              <div>
-                <div className="logo-text">Psaltikon</div>
-                <div className="logo-tagline">Sacred Treasury</div>
-              </div>
-            </motion.div>
+      <header className={`site-header ${isScrolled || mobileMenuOpen ? "is-scrolled" : ""} ${
+          currentPage === "home" && !isScrolled && !mobileMenuOpen ? "on-dark" : ""
+        }`}>
+        <div className="site-header__inner">
+          <button type="button" className="site-brand" onClick={() => handleNavClick("home")} aria-label="Psaltikon Library, home">
+            <OrthodoxCross size={22} />
+            <span className="site-brand__name">Psaltikon Library</span>
+          </button>
 
-            <div className="nav-group">
-              <nav className="nav">
-                {navItems.map((item, index) => (
-                  <motion.span
-                    key={item.page}
-                    className={`nav-link ${currentPage === item.page ? "active" : ""}`}
-                    onClick={() => handleNavClick(item.page)}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 * index, duration: 0.3 }}
-                  >
-                    {item.label}
-                  </motion.span>
-                ))}
-              </nav>
+          <div className="site-header__right">
+            <nav className="site-nav" aria-label="Main">
+              {navItems.map((item) => (
+                <button
+                  key={item.page}
+                  type="button"
+                  className={`site-nav__link ${currentPage === item.page ? "active" : ""}`}
+                  aria-current={currentPage === item.page ? "page" : undefined}
+                  onClick={() => handleNavClick(item.page)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
 
-              {/* Desktop: Login OR Account */}
+            <div className="site-header__auth">
               {isUserAuthed ? (
                 <div ref={accountMenuRef} className="account-menu-wrap">
-                  <motion.button
-                    type="button"
-                    onClick={handleAccountClick}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="auth-btn auth-btn--ghost account-trigger"
-                  >
-                    <span aria-hidden="true" className="account-trigger__icon">
-                      <span className="account-trigger__bar" />
-                      <span className="account-trigger__bar" />
-                      <span className="account-trigger__bar" />
-                    </span>
-                    <span>Account</span>
-                  </motion.button>
+                  {accountTrigger}
 
                   <AnimatePresence>
                     {accountMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: -8 }}
+                        initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.15 }}
                         className="account-menu-panel"
+                        role="menu"
                       >
-                        <div className="account-menu-label">
-                          My Account
-                        </div>
-
                         <div className="account-menu-list">
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("profile")}
-                            className="account-menu-item"
-                          >
-                            <span>Profile</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("saved")}
-                            className="account-menu-item"
-                          >
-                            <span>Saved Items</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("suggestion")}
-                            className="account-menu-item"
-                          >
-                            <span>Suggest a Chant</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("settings")}
-                            className="account-menu-item"
-                          >
-                            <span>Settings</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          {isAdminAuthed && (
-                            <button
-                              type="button"
-                              onClick={() => handleAccountAction("admin")}
-                              className="account-menu-item"
-                            >
-                              <span>Admin</span>
-                              <span aria-hidden="true">›</span>
-                            </button>
-                          )}
+                          {accountMenuItems}
                           <button
                             type="button"
                             onClick={() => handleAccountAction("signout")}
                             className="account-menu-item account-menu-item--signout"
                           >
                             <span>Sign out</span>
-                            <span aria-hidden="true">↗</span>
                           </button>
                         </div>
                       </motion.div>
@@ -262,70 +212,49 @@ const Header = ({
                   </AnimatePresence>
                 </div>
               ) : (
-                <motion.button
-                  type="button"
-                  className="auth-btn auth-btn--ghost"
-                  onClick={() => openAuth("login")}
-                
-                >
-                  Login
-                </motion.button>
+                <button type="button" className="site-login" onClick={() => openAuth("login")}>
+                  Log in
+                </button>
               )}
             </div>
-
-            <AnimatePresence>
-              {bookletCount > 0 && bookletMinimized && (
-                <motion.button
-                  type="button"
-                  className="booklet-nav-btn"
-                  onClick={onExpandBooklet}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={`Open booklet builder — ${bookletCount} selected`}
-                  title="Booklet builder"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z" />
-                    <path d="M4 20a2 2 0 0 1 2-2h14" />
-                  </svg>
-                  <span className="booklet-nav-btn__count">{bookletCount}</span>
-                </motion.button>
-              )}
-            </AnimatePresence>
-
-            <motion.button
-              className="menu-button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="menu-icon">
-                <motion.span
-                  animate={{
-                    rotate: mobileMenuOpen ? 45 : 0,
-                    y: mobileMenuOpen ? 6 : 0,
-                  }}
-                />
-                <motion.span animate={{ opacity: mobileMenuOpen ? 0 : 1 }} />
-                <motion.span
-                  animate={{
-                    rotate: mobileMenuOpen ? -45 : 0,
-                    y: mobileMenuOpen ? -6 : 0,
-                  }}
-                />
-              </div>
-            </motion.button>
           </div>
+
+          <AnimatePresence>
+            {bookletCount > 0 && bookletMinimized && (
+              <motion.button
+                type="button"
+                className="booklet-nav-btn"
+                onClick={onExpandBooklet}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                aria-label={`Open booklet builder, ${bookletCount} selected`}
+                title="Booklet builder"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2z" />
+                  <path d="M4 20a2 2 0 0 1 2-2h14" />
+                </svg>
+                <span className="booklet-nav-btn__count">{bookletCount}</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          <button
+            type="button"
+            className="menu-button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="site-mobile-nav"
+          >
+            {mobileMenuOpen ? "Close" : "Menu"}
+          </button>
         </div>
-      </motion.header>
+      </header>
 
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               className="mobile-nav-backdrop"
               initial={{ opacity: 0 }}
@@ -335,122 +264,50 @@ const Header = ({
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Menu */}
             <motion.nav
+              id="site-mobile-nav"
               className="mobile-nav"
-              initial={{ opacity: 0, y: -10 }}
+              aria-label="Main"
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              {navItems.map((item, index) => (
-                <motion.span
+              {[{ page: "home" as Page, label: "Home" }, ...navItems].map((item) => (
+                <button
                   key={item.page}
+                  type="button"
                   className={`mobile-nav-link ${currentPage === item.page ? "active" : ""}`}
+                  aria-current={currentPage === item.page ? "page" : undefined}
                   onClick={() => handleNavClick(item.page)}
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.03 * index, duration: 0.2 }}
                 >
                   {item.label}
-                </motion.span>
+                </button>
               ))}
 
-              {/* Mobile: Login OR Account at bottom */}
               <div className="mobile-auth">
                 {isUserAuthed ? (
                   <>
-                    <motion.button
-                      type="button"
-                      onClick={handleAccountClick}
-                      whileTap={{ scale: 0.98 }}
-                      className="mobile-auth-btn mobile-auth-btn--ghost account-trigger account-trigger--mobile"
-                    >
-                      <span aria-hidden="true" className="account-trigger__icon">
-                        <span className="account-trigger__bar" />
-                        <span className="account-trigger__bar" />
-                        <span className="account-trigger__bar" />
-                      </span>
-                      <span>Account</span>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {accountMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ duration: 0.18 }}
-                          className="account-menu-panel account-menu-panel--mobile"
+                    {accountItems
+                      .filter((item) => item.show !== false)
+                      .map((item) => (
+                        <button
+                          key={item.action}
+                          type="button"
+                          className="mobile-auth__item"
+                          onClick={() => handleAccountAction(item.action)}
                         >
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("profile")}
-                            className="account-menu-item"
-                          >
-                            <span>Profile</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("saved")}
-                            className="account-menu-item"
-                          >
-                            <span>Saved Items</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("suggestion")}
-                            className="account-menu-item"
-                          >
-                            <span>Suggest a Chant</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAccountAction("settings")}
-                            className="account-menu-item"
-                          >
-                            <span>Settings</span>
-                            <span aria-hidden="true">›</span>
-                          </button>
-                          {isAdminAuthed && (
-                            <button
-                              type="button"
-                              onClick={() => handleAccountAction("admin")}
-                              className="account-menu-item"
-                            >
-                              <span>Admin</span>
-                              <span aria-hidden="true">›</span>
-                            </button>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                          {item.label}
+                        </button>
+                      ))}
+                    <button type="button" className="mobile-auth__item" onClick={signOut}>
+                      Sign out
+                    </button>
                   </>
                 ) : (
-                  <motion.button
-                    type="button"
-                    className="mobile-auth-btn mobile-auth-btn--ghost"
-                    onClick={() => openAuth("login")}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Login
-                  </motion.button>
-                )}
-
-                {/* Optional: Sign out button directly visible on mobile menu */}
-                {isUserAuthed && (
-                  <motion.button
-                    type="button"
-                    className="mobile-auth-btn"
-                    onClick={signOut}
-                    whileTap={{ scale: 0.98 }}
-                    style={{ marginTop: 10 }}
-                  >
-                    Sign out
-                  </motion.button>
+                  <button type="button" className="mobile-auth__item" onClick={() => openAuth("login")}>
+                    Log in
+                  </button>
                 )}
               </div>
             </motion.nav>
@@ -458,7 +315,6 @@ const Header = ({
         )}
       </AnimatePresence>
 
-      {/* Auth Modal */}
       <AuthModal
         open={authOpen}
         mode={authMode}

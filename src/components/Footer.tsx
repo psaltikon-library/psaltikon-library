@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Page } from '../types';
 import OrthodoxCross from './OrthodoxCross';
 
@@ -6,141 +5,70 @@ interface FooterProps {
   onNavigate: (page: Page) => void;
 }
 
-const Footer = ({ onNavigate }: FooterProps) => {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
+const CONTACT_EMAIL = 'theorthodoxheritage@outlook.com';
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
+const Footer = ({ onNavigate }: FooterProps) => {
+  const links: { heading: string; items: { label: string; page: Page }[] }[] = [
+    {
+      heading: 'Library',
+      items: [
+        { label: 'Browse chants', page: 'library' },
+        { label: 'Booklets', page: 'booklets' },
+        { label: 'Services', page: 'services' },
+      ],
+    },
+    {
+      heading: 'About',
+      items: [{ label: 'Our mission', page: 'about' }],
+    },
+  ];
 
   return (
-    <motion.footer 
-      className="footer"
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.2 }}
-      variants={containerVariants}
-    >
-      <div className="footer-grid">
-        <motion.div className="footer-brand" variants={itemVariants}>
-          <div className="footer-logo">
-            <motion.span 
-              style={{ fontSize: '1.5rem', color: 'var(--burgundy)' }}
-              whileHover={{ rotate: [0, -10, 10, 0] }}
-              transition={{ duration: 0.5 }}
-            >
-              <OrthodoxCross size={24} />
-            </motion.span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 600 }}>
-              Psaltikon Library
-            </span>
+    <footer className="site-footer">
+      <div className="site-footer__inner">
+        <figure className="site-footer__verse">
+          <blockquote>Let everything that has breath praise the Lord.</blockquote>
+          <figcaption>Psalm 150:6</figcaption>
+        </figure>
+
+        <div className="site-footer__cols">
+          <div className="site-footer__brand">
+            <div className="site-footer__name">
+              <OrthodoxCross size={20} />
+              <span>Psaltikon Library</span>
+            </div>
+            <p>
+              Preserving, sharing, and making Orthodox Byzantine chant more accessible, for the glory of God and the
+              edification of the faithful.
+            </p>
           </div>
-          <p className="footer-description">
-            A sacred treasury of Byzantine chant, preserving and sharing the rich 
-            tradition of Orthodox liturgical music for the glory of God and the 
-            edification of the faithful.
-          </p>
-        </motion.div>
 
-        <motion.div className="footer-column" variants={itemVariants}>
-          <h4>Library</h4>
-          <ul className="footer-links">
-            <li>
-              <motion.a 
-                onClick={() => onNavigate('library')}
-                whileHover={{ x: 5 }}
-                style={{ cursor: 'pointer' }}
-              >
-                Browse Chants
-              </motion.a>
-            </li>
-            <li>
-              <motion.a 
-                onClick={() => onNavigate('booklets')}
-                whileHover={{ x: 5 }}
-                style={{ cursor: 'pointer' }}
-              >
-                Booklets
-              </motion.a>
-            </li>
-            <li>
-              <motion.a 
-                onClick={() => onNavigate('services')}
-                whileHover={{ x: 5 }}
-                style={{ cursor: 'pointer' }}
-              >
-                Services
-              </motion.a>
-            </li>
-          </ul>
-        </motion.div>
+          {links.map((group) => (
+            <nav className="site-footer__nav" aria-label={group.heading} key={group.heading}>
+              <h2>{group.heading}</h2>
+              <ul>
+                {group.items.map((item) => (
+                  <li key={item.label}>
+                    <button type="button" onClick={() => onNavigate(item.page)}>
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+                {group.heading === 'About' && (
+                  <li>
+                    <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
+                  </li>
+                )}
+              </ul>
+            </nav>
+          ))}
+        </div>
 
-        <motion.div className="footer-column" variants={itemVariants}>
-          <h4>Resources</h4>
-          <ul className="footer-links">
-            <li>
-              <motion.a whileHover={{ x: 5 }} style={{ cursor: 'pointer' }}>
-                Getting Started
-              </motion.a>
-            </li>
-            <li>
-              <motion.a whileHover={{ x: 5 }} style={{ cursor: 'pointer' }}>
-                Notation Guide
-              </motion.a>
-            </li>
-            <li>
-              <motion.a whileHover={{ x: 5 }} style={{ cursor: 'pointer' }}>
-                Contribute
-              </motion.a>
-            </li>
-          </ul>
-        </motion.div>
-
-        <motion.div className="footer-column" variants={itemVariants}>
-          <h4>About</h4>
-          <ul className="footer-links">
-            <li>
-              <motion.a 
-                onClick={() => onNavigate('about')}
-                whileHover={{ x: 5 }}
-                style={{ cursor: 'pointer' }}
-              >
-                Our Mission
-              </motion.a>
-            </li>
-            <li>
-              <motion.a whileHover={{ x: 5 }} style={{ cursor: 'pointer' }}>
-                Contact
-              </motion.a>
-            </li>
-            <li>
-              <motion.a whileHover={{ x: 5 }} style={{ cursor: 'pointer' }}>
-                Support Us
-              </motion.a>
-            </li>
-          </ul>
-        </motion.div>
+        <p className="site-footer__legal">
+          © {new Date().getFullYear()} Psaltikon Library. Free for every chanter, choir and parish.
+        </p>
       </div>
-
-      <motion.div className="footer-bottom" variants={itemVariants}>
-        <p className="footer-copyright">
-          © {new Date().getFullYear()} Psaltikon Library. For the glory of God.
-        </p>
-        <p className="footer-doxology">
-          "Let everything that has breath praise the Lord" — Psalm 150:6
-        </p>
-      </motion.div>
-    </motion.footer>
+    </footer>
   );
 };
 

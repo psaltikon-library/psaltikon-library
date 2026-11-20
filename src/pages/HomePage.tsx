@@ -1,12 +1,13 @@
-import { motion, MotionConfig, useScroll, useTransform } from 'framer-motion';
-import OrthodoxCross from '../components/OrthodoxCross';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { motion, MotionConfig } from 'framer-motion';
+import { FormEvent, useEffect, useState } from 'react';
 import { Page, Chant } from '../types';
-import ChantCard from '../components/ChantCard';
 import { supabase } from '../lib/supabase';
 import { resolveChantsWithDevFallback } from '../utils/chantFallback';
 import { excludePrivateChants } from '../utils/chantVisibility';
-import { getSavedChantIds } from '../utils/savedChants';
+import { TONE_COLORS, toneColor, toneNumber } from '../utils/tones';
+import { neumeForTone } from '../utils/toneNeumes';
+import { BOOK_DESCRIPTIONS, CHURCH_BOOKS } from '../utils/churchBooks';
+import { setLibraryPreset } from '../utils/libraryPreset';
 
 interface HomePageProps {
   onNavigate: (page: Page) => void;
@@ -15,167 +16,35 @@ interface HomePageProps {
   onToggleBookletChant: (chant: Chant) => void;
 }
 
-const iconProps = {
-  width: 24,
-  height: 24,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 1.5,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-  'aria-hidden': true,
-};
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
-const icons = {
-  scroll: (
-    <svg {...iconProps}>
-      <path d="M19 17V5a2 2 0 0 0-2-2H4" />
-      <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
-    </svg>
-  ),
-  globe: (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-      <path d="M2 12h20" />
-    </svg>
-  ),
-  bookOpen: (
-    <svg {...iconProps}>
-      <path d="M12 7v14" />
-      <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
-    </svg>
-  ),
-  search: (
-    <svg {...iconProps}>
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  ),
-  languages: (
-    <svg {...iconProps}>
-      <path d="m5 8 6 6" />
-      <path d="m4 14 6-6 2-3" />
-      <path d="M2 5h12" />
-      <path d="M7 2h1" />
-      <path d="m22 22-5-10-5 10" />
-      <path d="M14 18h6" />
-    </svg>
-  ),
-  music: (
-    <svg {...iconProps}>
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  ),
-  library: (
-    <svg {...iconProps}>
-      <path d="m16 6 4 14" />
-      <path d="M12 6v14" />
-      <path d="M8 8v12" />
-      <path d="M4 4v16" />
-    </svg>
-  ),
-  arrowRight: (
-    <svg {...iconProps} width={18} height={18}>
-      <path d="M5 12h14" />
-      <path d="m12 5 7 7-7 7" />
-    </svg>
-  ),
-  chevronDown: (
-    <svg {...iconProps}>
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  ),
-};
+// Traditional names of the eight tones, in order.
+const TONE_NAMES = [
+  'Protos',
+  'Deuteros',
+  'Tritos',
+  'Tetartos',
+  'Plagal of the first',
+  'Plagal of the second',
+  'Varys',
+  'Plagal of the fourth',
+];
 
-const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+interface LibraryFacts {
+  chants: number;
+  tones: number;
+  feasts: number;
+  byTone: number[]; // index 0 = Tone 1
+  byBook: Record<string, number>;
+}
+
+const count = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
 const HomePage = ({ onNavigate, onViewChant, bookletChantIds, onToggleBookletChant }: HomePageProps) => {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-
-  // Scroll-linked hero choreography: content dims and drifts as the reader descends.
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
-  const contentY = useTransform(scrollYProgress, [0, 1], ['0%', '22%']);
-
   const [featuredChants, setFeaturedChants] = useState<Chant[]>([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
-  const [savedChantIds, setSavedChantIds] = useState<string[]>([]);
-
-  const handleSavedChantId = (chantId: string) => {
-    setSavedChantIds((current) =>
-      current.includes(chantId) ? current : [...current, chantId]
-    );
-  };
-
-  const handleUnsavedChantId = (chantId: string) => {
-    setSavedChantIds((current) => current.filter((id) => id !== chantId));
-  };
-
-  const features = [
-    {
-      icon: icons.scroll,
-      title: 'Byzantine Notation',
-      description:
-        'Authentic Byzantine musical notation preserved in high-resolution PDF, faithful to the manuscripts and ready for the analogion.',
-      className: 'bento-a',
-      featured: true,
-    },
-    {
-      icon: icons.globe,
-      title: 'Phonetic Support',
-      description: 'Arabic chant with transliteration, so non-Arabic readers can sing along.',
-      className: 'bento-b',
-      featured: false,
-    },
-    {
-      icon: icons.search,
-      title: 'Advanced Search',
-      description: 'Find chant by feast, service, tone, or moment in the office.',
-      className: 'bento-c',
-      featured: false,
-    },
-    {
-      icon: icons.bookOpen,
-      title: 'Custom Booklets',
-      description:
-        'Gather selections into a single service booklet and export one clean PDF — built for choir directors and readers.',
-      className: 'bento-d',
-      featured: false,
-    },
-  ];
-
-  const collections = [
-    {
-      icon: icons.music,
-      title: 'Services',
-      subtitle: 'The church books',
-      description:
-        'Browse the Anastasimatarion, Divine Liturgy, Menaion, and Psalter in their traditional order.',
-      page: 'services' as Page,
-    },
-    {
-      icon: icons.library,
-      title: 'Custom Booklets',
-      subtitle: 'Build & share',
-      description:
-        'Assemble personalized service booklets by selecting chant and generating a combined PDF.',
-      page: 'booklets' as Page | null,
-    },
-  ];
-
-  const cardKeyDown = (action: () => void) => (event: KeyboardEvent) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      action();
-    }
-  };
+  const [facts, setFacts] = useState<LibraryFacts | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     const loadFeaturedChants = async () => {
@@ -200,275 +69,286 @@ const HomePage = ({ onNavigate, onViewChant, bookletChantIds, onToggleBookletCha
     void loadFeaturedChants();
   }, []);
 
+  // Every number on the page comes from the library itself, so it stays true as it grows.
   useEffect(() => {
-    const loadSavedChantIds = async () => {
-      setSavedChantIds(await getSavedChantIds());
+    const loadFacts = async () => {
+      const { data, error } = await supabase.from('chants').select('id, title, tone, feast, book, status');
+      if (error || !data) return;
+
+      const approved = excludePrivateChants(data as Chant[]);
+      if (approved.length === 0) return;
+
+      const byTone = Array<number>(8).fill(0);
+      const byBook: Record<string, number> = {};
+      const feasts = new Set<string>();
+
+      for (const chant of approved) {
+        const tone = toneNumber(chant.tone);
+        if (tone) byTone[tone - 1] += 1;
+        if (chant.book) byBook[chant.book] = (byBook[chant.book] || 0) + 1;
+        const feast = (chant.feast || '').trim().toLowerCase();
+        if (feast) feasts.add(feast);
+      }
+
+      setFacts({
+        chants: approved.length,
+        tones: byTone.filter(Boolean).length,
+        feasts: feasts.size,
+        byTone,
+        byBook,
+      });
     };
 
-    void loadSavedChantIds();
+    void loadFacts();
   }, []);
+
+  const openLibrary = (preset?: { query?: string; tone?: string }) => {
+    if (preset) setLibraryPreset(preset);
+    onNavigate('library');
+  };
+
+  const handleSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = query.trim();
+    openLibrary(trimmed ? { query: trimmed } : undefined);
+  };
 
   return (
     <MotionConfig reducedMotion="user">
-      {/* ── Hero ── */}
-      <section className="hero" ref={heroRef}>
-        <div className="hero-background" aria-hidden="true">
-          <div className="hero-gradient" />
-        </div>
-
-        <motion.div className="hero-content" style={{ opacity: contentOpacity, y: contentY }}>
-          <motion.p
-            className="hero-badge"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.1 }}
-          >
-            <span className="hero-badge-mark">✦</span>
-            A Sacred Treasury of Byzantine Chant
-          </motion.p>
-
-          <motion.h1
-            className="hero-title"
-            initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.2 }}
-          >
-            <span className="hero-title-main">Psaltikon</span>
-            <span className="hero-title-accent">Library</span>
-          </motion.h1>
-
-          <motion.p
-            className="hero-description"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.35 }}
-          >
-            Preserving and sharing the sacred tradition of Orthodox Byzantine chant
-            for the glory of God and the edification of the faithful.
-          </motion.p>
-
+      {/* ── Title page ── */}
+      <section className="home-hero">
+        <div className="home-hero__inner">
           <motion.div
-            className="hero-actions"
-            initial={{ opacity: 0, y: 16 }}
+            className="home-hero__copy"
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.5 }}
+            transition={{ duration: 0.5, ease: EASE_OUT }}
           >
-            <button className="btn btn-primary btn-lg btn-nested" onClick={() => onNavigate('library')}>
-              Browse Library
-              <span className="btn-nested-icon">{icons.arrowRight}</span>
-            </button>
-            <button className="btn btn-secondary btn-lg" onClick={() => onNavigate('about')}>
-              Our Mission
-            </button>
+            <h1 className="home-hero__title">
+              Orthodox Byzantine chant, free for every chanter, choir and parish.
+            </h1>
+
+            <div className="home-hero__row">
+            <form className="home-search" role="search" onSubmit={handleSearch}>
+              <label className="home-search__label" htmlFor="home-search-input">
+                Search the library
+              </label>
+              <input
+                id="home-search-input"
+                className="home-search__input"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by title"
+                autoComplete="off"
+              />
+              <button className="home-search__submit" type="submit">
+                Search
+              </button>
+            </form>
+
+            <p className="home-hero__aside">
+              {facts ? (
+                <>
+                  {count(facts.chants, 'chant', 'chants')} in {count(facts.tones, 'tone', 'tones')} and{' '}
+                  {count(facts.feasts, 'feast', 'feasts')}.{' '}
+                </>
+              ) : null}
+              <button className="home-link" type="button" onClick={() => openLibrary()}>
+                Browse everything
+              </button>
+            </p>
+            </div>
           </motion.div>
-
-          <motion.p
-            className="hero-stats-inline"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.65 }}
-          >
-            500+ chants<span className="hero-stats-mark">✦</span>8 tones
-            <span className="hero-stats-mark">✦</span>12 feasts
-          </motion.p>
-        </motion.div>
-
-        <motion.div
-          className="hero-scroll-hint"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.6 }}
-          aria-hidden="true"
-        >
-          {icons.chevronDown}
-        </motion.div>
-      </section>
-
-      {/* ── Opening verse ── */}
-      <section className="section section-quote">
-        <div className="container container-narrow">
-          <motion.figure
-            className="verse"
-            initial={{ opacity: 0, y: 32 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.8, ease: EASE_OUT }}
-          >
-            <span className="verse-mark"><OrthodoxCross size={26} /></span>
-            <blockquote className="verse-text">He who sings prays twice.</blockquote>
-            <figcaption className="verse-source">St. Augustine of Hippo</figcaption>
-          </motion.figure>
         </div>
+        <p className="home-hero__credit">Anoixantaria, melody by Prot. Mitri El-Murr</p>
       </section>
 
-      {/* ── Resources (bento) ── */}
-      <section className="section">
-        <div className="container">
-          <motion.header
-            className="section-lead"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: EASE_OUT }}
-          >
-            <h2>Sacred Resources</h2>
-            <p>Everything the faithful need to enter the liturgical life of the Church.</p>
-          </motion.header>
-
-          <div className="bento">
-            {features.map((feature, index) => (
-              <motion.article
-                key={feature.title}
-                className={`bento-tile ${feature.className} ${feature.featured ? 'bento-tile-featured' : ''}`}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.6, ease: EASE_OUT, delay: index * 0.08 }}
-              >
-                <span className="bento-icon">{feature.icon}</span>
-                <h3 className="bento-title">{feature.title}</h3>
-                <p className="bento-description">{feature.description}</p>
-              </motion.article>
-            ))}
+      {/* ── The eight tones ── */}
+      <section className="home-tones" aria-labelledby="home-tones-title">
+        <div className="home-wrap">
+          <div className="home-head">
+            <h2 className="home-h2" id="home-tones-title">
+              Browse by tone
+            </h2>
+            <p className="home-head__note">
+              Chant is sung in one of eight tones. Each keeps its colour on the cards and in the PDF headers.
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* ── Featured chants ── */}
-      <section className="section section-alt">
-        <div className="container">
-          <motion.header
-            className="section-lead"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: EASE_OUT }}
-          >
-            <h2>Featured Chants</h2>
-            <p>Recent additions from the collection.</p>
-          </motion.header>
+          <ol className="home-tones__row">
+            {TONE_COLORS.map((color, index) => {
+              const number = index + 1;
+              const total = facts?.byTone[index] ?? null;
+              const neume = neumeForTone(`Tone ${number}`);
+              const empty = total === 0;
+              const inner = (
+                <>
+                  <span
+                    className="home-tone__neume"
+                    aria-hidden="true"
+                    style={{
+                      backgroundColor: color,
+                      WebkitMaskImage: neume ? `url(${neume})` : undefined,
+                      maskImage: neume ? `url(${neume})` : undefined,
+                    }}
+                  />
+                  <span className="home-tone__name">Tone {number}</span>
+                  <span className="home-tone__greek">{TONE_NAMES[index]}</span>
+                  <span className="home-tone__count">
+                    {total === null ? ' ' : empty ? 'None yet' : count(total, 'chant', 'chants')}
+                  </span>
+                </>
+              );
 
-          {isLoadingFeatured ? (
-            <div className="chants-grid" aria-busy="true" aria-label="Loading featured chants">
-              {[0, 1, 2].map((index) => (
-                <div className="chant-card-skeleton" key={index}>
-                  <div className="skeleton skeleton-icon" />
-                  <div className="skeleton skeleton-line skeleton-line-title" />
-                  <div className="skeleton skeleton-line skeleton-line-sub" />
-                  <div className="skeleton-badges">
-                    <span className="skeleton skeleton-badge" />
-                    <span className="skeleton skeleton-badge" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : featuredChants.length > 0 ? (
-            <div className="chants-grid">
-              {featuredChants.map((chant, index) => (
-                <ChantCard
-                  key={chant.id}
-                  chant={chant}
-                  onView={onViewChant}
-                  isSaved={savedChantIds.includes(chant.id)}
-                  onSave={handleSavedChantId}
-                  onUnsave={handleUnsavedChantId}
-                  showSaveButton={true}
-                  index={index}
-                  onToggleBooklet={(id) => {
-                    const target = featuredChants.find((item) => item.id === id);
-                    if (target) onToggleBookletChant(target);
-                  }}
-                  isInBooklet={bookletChantIds.includes(chant.id)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">{icons.music}</div>
-              <p className="empty-state-text">No chants available yet.</p>
-            </div>
-          )}
-
-          <div className="section-cta">
-            <button className="btn btn-primary btn-lg btn-nested" onClick={() => onNavigate('library')}>
-              View All Chants
-              <span className="btn-nested-icon">{icons.arrowRight}</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Collections (zig-zag) ── */}
-      <section className="section">
-        <div className="container">
-          <motion.header
-            className="section-lead"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: EASE_OUT }}
-          >
-            <h2>Explore Our Collections</h2>
-            <p>A carefully ordered treasury of sacred music.</p>
-          </motion.header>
-
-          <div className="collections">
-            {collections.map((collection, index) => {
-              const interactive = collection.page !== null;
-              const go = () => collection.page && onNavigate(collection.page);
               return (
-                <motion.article
-                  key={collection.title}
-                  className={`collection-item ${interactive ? 'collection-item-clickable' : ''}`}
-                  initial={{ opacity: 0, y: 28 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.6, ease: EASE_OUT, delay: index * 0.08 }}
-                  onClick={interactive ? go : undefined}
-                  onKeyDown={interactive ? cardKeyDown(go) : undefined}
-                  role={interactive ? 'button' : undefined}
-                  tabIndex={interactive ? 0 : undefined}
-                >
-                  <div className="collection-figure">
-                    <span className="collection-icon">{collection.icon}</span>
-                    <span className="collection-index">{String(index + 1).padStart(2, '0')}</span>
-                  </div>
-                  <div className="collection-body">
-                    <p className="collection-subtitle">{collection.subtitle}</p>
-                    <h3 className="collection-title">{collection.title}</h3>
-                    <p className="collection-description">{collection.description}</p>
-                    <span className={`collection-cta ${interactive ? '' : 'collection-cta-muted'}`}>
-                      {interactive ? 'Explore' : 'Coming soon'}
-                      {interactive && icons.arrowRight}
-                    </span>
-                  </div>
-                </motion.article>
+                <li className="home-tone" key={number} style={{ ['--tone' as string]: color }}>
+                  {empty ? (
+                    <div className="home-tone__body home-tone__body--empty">{inner}</div>
+                  ) : (
+                    <button
+                      className="home-tone__body"
+                      type="button"
+                      onClick={() => openLibrary({ tone: `Tone ${number}` })}
+                      aria-label={`Tone ${number}, ${TONE_NAMES[index]}${total ? `, ${count(total, 'chant', 'chants')}` : ''}`}
+                    >
+                      {inner}
+                    </button>
+                  )}
+                </li>
               );
             })}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── Church books ── */}
+      <section className="home-books" aria-labelledby="home-books-title">
+        <div className="home-wrap home-split">
+          <div className="home-split__lead">
+            <h2 className="home-h2" id="home-books-title">
+              By church book
+            </h2>
+            <p className="home-prose">
+              The Services directory files each chant where a chanter would look for it, in the book it is sung from.
+            </p>
+            <button className="home-link" type="button" onClick={() => onNavigate('services')}>
+              Open the Services directory
+            </button>
+          </div>
+
+          <ul className="home-toc">
+            {CHURCH_BOOKS.map((book) => {
+              const total = facts?.byBook[book];
+              return (
+                <li key={book}>
+                  <button className="home-toc__row" type="button" onClick={() => onNavigate('services')}>
+                    <span className="home-toc__title">{book}</span>
+                    <span className="home-toc__leader" aria-hidden="true" />
+                    <span className="home-toc__count">{total ? count(total, 'chant', 'chants') : ' '}</span>
+                    <span className="home-toc__desc">{BOOK_DESCRIPTIONS[book]}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </section>
+
+      {/* ── At the stand ── */}
+      <section className="home-stand" aria-labelledby="home-stand-title">
+        <div className="home-wrap">
+          <blockquote className="home-statement">
+            Byzantine chant is not merely music. It is prayer set to melody, theology sung aloud, and a living
+            connection to centuries of Orthodox worship.
+          </blockquote>
+
+          <div className="home-split home-split--prose">
+            <h2 className="home-h2 home-h2--small" id="home-stand-title">
+              At the chanter&rsquo;s stand
+            </h2>
+
+            <div className="home-prose home-prose--long">
+              <p>
+                <span className="home-runin">Notation.</span> Every chant is a high-resolution PDF of the Byzantine
+                notation. Opening or downloading one stamps its book, psalm, feast and chant type across the top, and
+                the source credit along the bottom.
+              </p>
+              <p>
+                <span className="home-runin">Phonetics.</span> Arabic and Greek chants carry phonetic transliteration,
+                so a chanter who does not read the script can still follow.
+              </p>
+              <p>
+                <span className="home-runin">Booklets.</span> Add chants as you browse and compile one PDF for the
+                service. Keep the booklet private, or share it with other chanters.{' '}
+                <button className="home-link" type="button" onClick={() => onNavigate('booklets')}>
+                  Build a booklet
+                </button>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Closing verse ── */}
-      <section className="section section-alt section-quote">
-        <div className="container container-narrow">
-          <div className="byzantine-divider">
-            <div className="byzantine-divider-line" />
-            <span className="byzantine-divider-icon"><OrthodoxCross size={20} /></span>
-            <div className="byzantine-divider-line" />
+      {/* ── Recent chants ── */}
+      <section className="home-recent" aria-labelledby="home-recent-title">
+        <div className="home-wrap">
+          <div className="home-head home-head--row">
+            <h2 className="home-h2" id="home-recent-title">
+              Recent additions
+            </h2>
+            <button className="home-link" type="button" onClick={() => openLibrary()}>
+              View all chants
+            </button>
           </div>
-          <motion.figure
-            className="verse"
-            initial={{ opacity: 0, y: 32 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.8, ease: EASE_OUT }}
-          >
-            <blockquote className="verse-text">
-              Sing to the Lord a new song; sing to the Lord, all the earth.
-            </blockquote>
-            <figcaption className="verse-source">Psalm 96:1</figcaption>
-          </motion.figure>
+
+          {isLoadingFeatured ? (
+            <ul className="home-entries" aria-busy="true" aria-label="Loading recent additions">
+              {[0, 1, 2].map((index) => (
+                <li className="home-entry home-entry--ghost" key={index}>
+                  <span className="skeleton home-entry__ghost" />
+                </li>
+              ))}
+            </ul>
+          ) : featuredChants.length > 0 ? (
+            <ul className="home-entries">
+              {featuredChants.map((chant) => {
+                const neume = neumeForTone(chant.tone);
+                const inBooklet = bookletChantIds.includes(chant.id);
+                const meta = [chant.tone, chant.part, chant.service].filter(Boolean).join(' \u00b7 ');
+
+                return (
+                  <li className="home-entry" key={chant.id}>
+                    <button className="home-entry__main" type="button" onClick={() => onViewChant(chant.id)}>
+                      <span
+                        className="home-entry__neume"
+                        aria-hidden="true"
+                        style={{
+                          backgroundColor: toneColor(chant.tone) || 'var(--text-muted)',
+                          WebkitMaskImage: neume ? `url(${neume})` : undefined,
+                          maskImage: neume ? `url(${neume})` : undefined,
+                        }}
+                      />
+                      <span className="home-entry__text">
+                        <span className="home-entry__title">{chant.title}</span>
+                        <span className="home-entry__meta">{meta}</span>
+                      </span>
+                    </button>
+                    <button
+                      className="home-link home-entry__booklet"
+                      type="button"
+                      aria-pressed={inBooklet}
+                      onClick={() => onToggleBookletChant(chant)}
+                    >
+                      {inBooklet ? 'In your booklet' : 'Add to booklet'}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="home-prose">No chants available yet.</p>
+          )}
         </div>
       </section>
     </MotionConfig>

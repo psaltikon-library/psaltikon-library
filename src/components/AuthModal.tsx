@@ -205,7 +205,12 @@ export default function AuthModal({ open, mode, onClose, onSwitchMode }: AuthMod
                     });
 
                     if (error) {
-                      setAuthError(error.message || "Unable to log in.");
+                      const banned = error.code === "user_banned" || /banned/i.test(error.message || "");
+                      setAuthError(
+                        banned
+                          ? "This account has been suspended. If you think this is a mistake, contact theorthodoxheritage@outlook.com."
+                          : error.message || "Unable to log in."
+                      );
                       setIsSubmitting(false);
                       return;
                     }
